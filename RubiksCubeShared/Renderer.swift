@@ -12,29 +12,12 @@ import simd
 
 class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
     
-    private enum Fractal {
-        case mandelbrot
-        case julia
-    }
-    
-    private struct Region {
-        var bottomLeft: simd_float2
-        var topRight: simd_float2
-    }
-    
     private let device: MTLDevice
     private let commandQueue: MTLCommandQueue
-    private let mandelbrotPipelineState: MTLRenderPipelineState
-    private let juliaPipelineState: MTLRenderPipelineState
-    private var uniforms: FractalUniforms
-    private let uniformsLength = MemoryLayout<FractalUniforms>.stride
-    private var maxIterations: Int
-    private var colorMaps: [[simd_float4]]
-    private var colorMapIndex: Int
-    private var fractal = Fractal.mandelbrot
-    private var region: Region
-    private var juliaConstant: simd_float2
-    private var needRender = true
+    private let flatPipelineState: MTLRenderPipelineState
+    private let mesh: MDLMesh
+    private var viewMatrix: matrix_float4x4
+    private var projectionMatrix: matrix_float4x4
     
     init?(mtkView: MTKView, bundle: Bundle? = nil) {
         self.device = mtkView.device!
@@ -42,119 +25,44 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
         self.commandQueue = queue
         
         do {
-            mandelbrotPipelineState = try Renderer.buildRenderPipelineState(name: "mandelbrot",
-                                                                            device: device,
-                                                                            mtkView: mtkView,
-                                                                            bundle: bundle)
+            flatPipelineState = try Renderer.buildRenderPipelineState(device: device,
+                                                                      mtkView: mtkView,
+                                                                      bundle: bundle)
         } catch {
             print("Unable to compile render pipeline state. Error info: \(error)")
             return nil
         }
         
-        do {
-            juliaPipelineState = try Renderer.buildRenderPipelineState(name: "julia",
-                                                                       device: device,
-                                                                       mtkView: mtkView,
-                                                                       bundle: bundle)
-        } catch {
-            print("Unable to compile render pipeline state. Error info: \(error)")
-            return nil
-        }
+        viewMatrix = matrix_lookat(eye: simd_float3(0, 0, -2),
+                                   point: simd_float3(),
+                                   up: simd_float3(0, 1, 0))
+        projectionMatrix = matrix_identity_float4x4
         
-        uniforms = FractalUniforms()
-        uniforms.modelViewMatrix = matrix_float4x4.init(columns: (
-            simd_float4(1, 0, 0, 0),
-            simd_float4(0, -1, 0, 0),
-            simd_float4(0, 0, 1, 0),
-            simd_float4(0, 0, 0, 1)))
-        
-        maxIterations = 120
-        colorMaps = [jet, gistStern, oceanData]
-        colorMapIndex = 0
-        
-        region = Region(bottomLeft: simd_float2(-0.22, -0.7),
-                        topRight: simd_float2(-0.21, -0.69))
-        
-        juliaConstant = simd_float2(-0.22334650856389987, -0.6939525691699604)
+        let url = (bundle ?? Bundle.main).url(forResource: "cube-bevelled", withExtension: "obj")
+        let asset = MDLAsset(url: url!)
+        mesh = asset.childObjects(of: MDLMesh.self).first as! MDLMesh
         
         super.init()
-        
-        self.pan1()
-        self.zoom1()
-    }
-    
-    func pan1() {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1/20) {
-            self.pan2()
-            self.pan1()
-        }
-    }
-    
-    func pan2() {
-        let pc = Float(0.1)
-        let rw = region.topRight.x - region.bottomLeft.x
-        let rwDelta = rw / 100 * pc
-        region.bottomLeft.x -= rwDelta
-        region.topRight.x -= rwDelta
-        let rh = region.topRight.y - region.bottomLeft.y
-        let rhDelta = rh / 100 * pc
-        region.bottomLeft.y -= rhDelta
-        region.topRight.y -= rhDelta
-        needRender = true
-    }
-    
-    func zoom1() {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1/20) {
-            self.zoom2()
-            self.zoom1()
-        }
-    }
-    
-    func zoom2() {
-        let pc = Float(0.5)
-        let rw = region.topRight.x - region.bottomLeft.x
-        let rh = region.topRight.y - region.bottomLeft.y
-        let rwDelta = rw / 100 * pc
-        let rhDelta = rh / 100 * pc
-        let rwDeltaHalf = rwDelta / 2
-        let rhDeltaHalf = rhDelta / 2
-        region.bottomLeft.x += rwDeltaHalf
-        region.topRight.x -= rwDeltaHalf
-        region.bottomLeft.y += rhDeltaHalf
-        region.topRight.y -= rhDeltaHalf
-        needRender = true
     }
     
     func onSwitchFractal() {
-        switch fractal {
-        case .mandelbrot:
-            fractal = .julia
-            break
-        case .julia:
-            fractal = .mandelbrot
-            break
-        }
-        needRender = true
     }
     
     func onSwitchColorMap() {
-        colorMapIndex = (colorMapIndex + 1) % colorMaps.count
-        needRender = true
     }
     
-    class func buildRenderPipelineState(name: String,
-                                        device: MTLDevice,
+    class func buildRenderPipelineState(device: MTLDevice,
                                         mtkView: MTKView,
                                         bundle: Bundle?) throws -> MTLRenderPipelineState {
         let library = bundle != nil
             ? try device.makeDefaultLibrary(bundle: bundle!)
             : device.makeDefaultLibrary()
         
-        let vertexFunction = library?.makeFunction(name: "vertexShader")
-        let fragmentFunction = library?.makeFunction(name: "\(name)Shader")
+        let vertexFunction = library?.makeFunction(name: "vertexFlatShader")
+        let fragmentFunction = library?.makeFunction(name: "fragmentFlatShader")
         
         let pipelineDescriptor = MTLRenderPipelineDescriptor()
-        pipelineDescriptor.label = "MandelbrotRenderPipeline"
+        pipelineDescriptor.label = "FlatRenderPipeline"
         pipelineDescriptor.vertexFunction = vertexFunction
         pipelineDescriptor.fragmentFunction = fragmentFunction
         
@@ -164,67 +72,34 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
         return try device.makeRenderPipelineState(descriptor: pipelineDescriptor)
     }
     
-    private func renderMandelbrot(renderEncoder: MTLRenderCommandEncoder) {
+    private func renderCube(renderEncoder: MTLRenderCommandEncoder) {
+        // let submesh = mesh.submeshes![0] as! MDLSubmesh
+        let color = simd_float4(1, 0, 0, 1)
         let vertices = [
-            FractalVertex(position: simd_float2(1, 1), region: simd_float2(region.topRight.x, region.topRight.y)),
-            FractalVertex(position: simd_float2(-1, 1), region: simd_float2(region.bottomLeft.x, region.topRight.y)),
-            FractalVertex(position: simd_float2(1, -1), region: simd_float2(region.topRight.x, region.bottomLeft.y)),
-            FractalVertex(position: simd_float2(-1, -1), region: simd_float2(region.bottomLeft.x, region.bottomLeft.y))
+            FlatVertex(position: simd_float3(0, 0.5, 0), color: color),
+            FlatVertex(position: simd_float3(-0.5, -0.5, 0), color: color),
+            FlatVertex(position: simd_float3(0.5, -0.5, 0), color: color)
         ]
-        let verticesLength = MemoryLayout<FractalVertex>.stride * vertices.count
-        uniforms.maxIterations = Int32(maxIterations)
-        let colorMap = colorMaps[colorMapIndex]
-        let colorMapLength = MemoryLayout<simd_float4>.stride * colorMap.count
-        renderEncoder.pushDebugGroup("Draw Fractal")
-        renderEncoder.setRenderPipelineState(mandelbrotPipelineState)
+        let verticesLength = MemoryLayout<FlatVertex>.stride * vertices.count
+        var uniforms = FlatUniforms()
+        uniforms.modelMatrix = matrix_identity_float4x4
+        uniforms.viewMatrix = viewMatrix
+        uniforms.projectionMatrix = projectionMatrix
+        let uniformsLength = MemoryLayout<FlatUniforms>.stride
+        renderEncoder.pushDebugGroup("Draw Cube")
+        renderEncoder.setRenderPipelineState(flatPipelineState)
         renderEncoder.setVertexBytes(&uniforms, length: uniformsLength, index: 0)
         renderEncoder.setVertexBytes(vertices, length: verticesLength, index: 1)
-        renderEncoder.setFragmentBytes(&uniforms, length: uniformsLength, index: 0)
-        renderEncoder.setFragmentBytes(colorMap, length: colorMapLength, index: 1)
-        renderEncoder.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: vertices.count)
-        renderEncoder.popDebugGroup()
-    }
-    
-    private func renderJulia(renderEncoder: MTLRenderCommandEncoder, juliaConstant: simd_float2) {
-        let vertices = [
-            FractalVertex(position: simd_float2(1, 1), region: simd_float2(region.topRight.x, region.topRight.y)),
-            FractalVertex(position: simd_float2(-1, 1), region: simd_float2(region.bottomLeft.x, region.topRight.y)),
-            FractalVertex(position: simd_float2(1, -1), region: simd_float2(region.topRight.x, region.bottomLeft.y)),
-            FractalVertex(position: simd_float2(-1, -1), region: simd_float2(region.bottomLeft.x, region.bottomLeft.y))
-        ]
-        let verticesLength = MemoryLayout<FractalVertex>.stride * vertices.count
-        uniforms.maxIterations = Int32(maxIterations)
-        let colorMap = colorMaps[colorMapIndex]
-        let colorMapLength = MemoryLayout<simd_float4>.stride * colorMap.count
-        renderEncoder.pushDebugGroup("Draw Fractal")
-        renderEncoder.setRenderPipelineState(juliaPipelineState)
-        renderEncoder.setVertexBytes(&uniforms, length: uniformsLength, index: 0)
-        renderEncoder.setVertexBytes(vertices, length: verticesLength, index: 1)
-        renderEncoder.setFragmentBytes(&uniforms, length: uniformsLength, index: 0)
-        renderEncoder.setFragmentBytes(colorMap, length: colorMapLength, index: 1)
-        var juliaConstant = juliaConstant
-        renderEncoder.setFragmentBytes(&juliaConstant, length: MemoryLayout<simd_float2>.stride, index: 2)
-        renderEncoder.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: vertices.count)
+        renderEncoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: vertices.count)
         renderEncoder.popDebugGroup()
     }
     
     func draw(in view: MTKView) {
-        if !needRender {
-            return
-        }
-        needRender = false
         if let commandBuffer = commandQueue.makeCommandBuffer() {
             let renderPassDescriptor = view.currentRenderPassDescriptor
             if let renderPassDescriptor = renderPassDescriptor,
                 let renderEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor) {
-                switch fractal {
-                case .mandelbrot:
-                    renderMandelbrot(renderEncoder: renderEncoder)
-                    break
-                case .julia:
-                    renderJulia(renderEncoder: renderEncoder, juliaConstant: juliaConstant)
-                    break
-                }
+                renderCube(renderEncoder: renderEncoder)
                 renderEncoder.endEncoding()
             }
             view.currentDrawable.map(commandBuffer.present)
@@ -234,28 +109,11 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
     }
     
     func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {
+        let aspect = Float(size.width) / Float(size.height)
+        projectionMatrix = matrix_perspective_right_hand(fovyRadians: radians_from_degrees(65),
+                                                         aspectRatio:aspect,
+                                                         nearZ: 0.1,
+                                                         farZ: 100.0)
         
-        let cw = Float(size.width)
-        let ch = Float(size.height)
-        let rw = region.topRight.x - region.bottomLeft.x
-        let rh = region.topRight.y - region.bottomLeft.y
-        
-        if (cw > ch) {
-            let rwNew = cw * rh / ch
-            let rwDelta = rwNew - rw
-            let rwDeltaHalf = rwDelta / 2
-            region.bottomLeft.x -= rwDeltaHalf
-            region.topRight.x += rwDeltaHalf
-        }
-        
-        if (cw < ch) {
-            let rhNew = ch * rw / cw
-            let rhDelta = rhNew - rh
-            let rhDeltaHalf = rhDelta / 2
-            region.bottomLeft.y -= rhDeltaHalf
-            region.topRight.y += rhDeltaHalf
-        }
-        
-        needRender = true
     }
 }

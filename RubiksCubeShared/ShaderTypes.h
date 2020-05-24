@@ -22,13 +22,14 @@
 #include <simd/simd.h>
 
 typedef struct {
-    matrix_float4x4 modelViewMatrix;
-    int maxIterations;
-} FractalUniforms;
+    matrix_float4x4 modelMatrix;
+    matrix_float4x4 viewMatrix;
+    matrix_float4x4 projectionMatrix;
+} FlatUniforms;
 
 typedef struct {
-    vector_float2 position;
-    vector_float2 region;
-} FractalVertex;
+    vector_float3 position;
+    vector_float4 color;
+} FlatVertex;
 
 #endif /* ShaderTypes_h */
