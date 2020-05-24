@@ -15,10 +15,10 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
     private let device: MTLDevice
     private let commandQueue: MTLCommandQueue
     private let flatPipelineState: MTLRenderPipelineState
-    private let mesh: MDLMesh
     private var viewMatrix: matrix_float4x4
     private var projectionMatrix: matrix_float4x4
-    
+    private let mesh: MTKMesh
+
     init?(mtkView: MTKView, bundle: Bundle? = nil) {
         self.device = mtkView.device!
         guard let queue = self.device.makeCommandQueue() else { return nil }
@@ -33,15 +33,27 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
             return nil
         }
         
-        viewMatrix = matrix_lookat(eye: simd_float3(0, 0, -2),
+        viewMatrix = matrix_lookat(eye: simd_float3(0, 0, -5),
                                    point: simd_float3(),
                                    up: simd_float3(0, 1, 0))
         projectionMatrix = matrix_identity_float4x4
         
         let url = (bundle ?? Bundle.main).url(forResource: "cube-bevelled", withExtension: "obj")
-        let asset = MDLAsset(url: url!)
-        mesh = asset.childObjects(of: MDLMesh.self).first as! MDLMesh
-        
+        let vertexDescriptor = MTLVertexDescriptor()
+        vertexDescriptor.attributes[0].format = .float3
+        vertexDescriptor.attributes[0].offset = 0
+        vertexDescriptor.attributes[0].bufferIndex = 0
+        vertexDescriptor.layouts[0].stride = MemoryLayout<simd_float3>.stride
+        let meshDescriptor = MTKModelIOVertexDescriptorFromMetal(vertexDescriptor)
+        (meshDescriptor.attributes[0] as! MDLVertexAttribute).name = MDLVertexAttributePosition
+        let allocator = MTKMeshBufferAllocator(device: device)
+        let asset = MDLAsset(url: url!,
+                             vertexDescriptor: meshDescriptor,
+                             bufferAllocator: allocator)
+        let mdlMesh = asset.childObjects(of: MDLMesh.self).first as! MDLMesh
+        mesh = try! MTKMesh(mesh: mdlMesh, device: device)
+        print(mesh)
+
         super.init()
     }
     
@@ -73,14 +85,7 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
     }
     
     private func renderCube(renderEncoder: MTLRenderCommandEncoder) {
-        // let submesh = mesh.submeshes![0] as! MDLSubmesh
-        let color = simd_float4(1, 0, 0, 1)
-        let vertices = [
-            FlatVertex(position: simd_float3(0, 0.5, 0), color: color),
-            FlatVertex(position: simd_float3(-0.5, -0.5, 0), color: color),
-            FlatVertex(position: simd_float3(0.5, -0.5, 0), color: color)
-        ]
-        let verticesLength = MemoryLayout<FlatVertex>.stride * vertices.count
+        let submesh = mesh.submeshes[0]
         var uniforms = FlatUniforms()
         uniforms.modelMatrix = matrix_identity_float4x4
         uniforms.viewMatrix = viewMatrix
@@ -89,8 +94,12 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
         renderEncoder.pushDebugGroup("Draw Cube")
         renderEncoder.setRenderPipelineState(flatPipelineState)
         renderEncoder.setVertexBytes(&uniforms, length: uniformsLength, index: 0)
-        renderEncoder.setVertexBytes(vertices, length: verticesLength, index: 1)
-        renderEncoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: vertices.count)
+        renderEncoder.setVertexBuffer(mesh.vertexBuffers[0].buffer, offset: 0, index: 1)
+        renderEncoder.drawIndexedPrimitives(type: .triangle,
+                                            indexCount: submesh.indexCount,
+                                            indexType: submesh.indexType,
+                                            indexBuffer: submesh.indexBuffer.buffer,
+                                            indexBufferOffset: submesh.indexBuffer.offset)
         renderEncoder.popDebugGroup()
     }
     
