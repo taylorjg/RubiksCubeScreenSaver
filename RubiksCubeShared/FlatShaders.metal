@@ -14,12 +14,14 @@ using namespace metal;
 
 typedef struct {
     float4 position [[position]];
-//    float4 color;
+    float4 color;
 } FlatInOut;
 
 vertex FlatInOut vertexFlatShader(uint vertexID [[vertex_id]],
                                   constant FlatUniforms &uniforms [[buffer(0)]],
-                                  constant FlatVertex *vertices [[buffer(1)]])
+                                  constant FlatVertex *vertices [[buffer(1)]],
+                                  constant float4 *colorMap[[buffer(2)]],
+                                  constant int *colorMapIndices[[buffer(3)]])
 {
     constant FlatVertex &flatVertex = vertices[vertexID];
     
@@ -27,8 +29,8 @@ vertex FlatInOut vertexFlatShader(uint vertexID [[vertex_id]],
     float4 position = float4(flatVertex.position, 1.0);
 
     FlatInOut out {
-        out.position = mvp * position
-//        out.color = flatVertex.color
+        out.position = mvp * position,
+        out.color = colorMap[colorMapIndices[vertexID]]
     };
     
     return out;
@@ -36,6 +38,5 @@ vertex FlatInOut vertexFlatShader(uint vertexID [[vertex_id]],
 
 fragment float4 fragmentFlatShader(FlatInOut in [[stage_in]])
 {
-//    return in.color;
-    return float4(1, 0, 0, 0.5);
+    return in.color;
 }

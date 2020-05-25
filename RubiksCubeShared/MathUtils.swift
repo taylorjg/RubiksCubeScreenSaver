@@ -28,6 +28,13 @@ func matrix4x4_translation(_ translationX: Float, _ translationY: Float, _ trans
                                          vector_float4(translationX, translationY, translationZ, 1)))
 }
 
+func matrix4x4_scale(_ scaleX: Float, _ scaleY: Float, _ scaleZ: Float) -> matrix_float4x4 {
+    return matrix_float4x4.init(columns:(vector_float4(scaleX, 0, 0, 0),
+                                         vector_float4(0, scaleY, 0, 0),
+                                         vector_float4(0, 0, scaleZ, 0),
+                                         vector_float4(0, 0, 0, 1)))
+}
+
 func matrix_lookat(eye: simd_float3, point: simd_float3, up: simd_float3) -> matrix_float4x4 {
     let f = normalize(eye - point)
     let s = normalize(cross(up, f))
@@ -68,4 +75,10 @@ extension matrix_float4x4 {
 
 func radians_from_degrees(_ degrees: Float) -> Float {
     return (degrees / 180) * .pi
+}
+
+extension Float {
+    func closeTo(_ other: Float) -> Bool {
+        return abs(self - other) <= 1e-6
+    }
 }
