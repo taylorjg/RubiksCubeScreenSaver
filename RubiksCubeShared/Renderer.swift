@@ -20,9 +20,14 @@ private let DARK_GREY = simd_float4(0.157, 0.157, 0.157, 1)
 
 class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
     
+    private struct Piece {
+        let modelMatrix: matrix_float4x4
+    }
+    
     private let device: MTLDevice
     private let commandQueue: MTLCommandQueue
     private let flatPipelineState: MTLRenderPipelineState
+    private let depthState: MTLDepthStencilState
     private var viewMatrix: matrix_float4x4
     private var projectionMatrix: matrix_float4x4
     private let mtkMesh: MTKMesh
@@ -30,9 +35,11 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
     private let colorMapBuffer: MTLBuffer
     private var colorMapIndices: [Int32]
     private let colorMapIndicesBuffer: MTLBuffer
+    private var pieces: [Piece]
     
     init?(mtkView: MTKView, bundle: Bundle? = nil) {
         self.device = mtkView.device!
+        mtkView.depthStencilPixelFormat = MTLPixelFormat.depth32Float
         mtkView.sampleCount = 4
         guard let queue = self.device.makeCommandQueue() else { return nil }
         self.commandQueue = queue
@@ -46,6 +53,11 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
             return nil
         }
         
+        let depthStateDesciptor = MTLDepthStencilDescriptor()
+        depthStateDesciptor.depthCompareFunction = MTLCompareFunction.less
+        depthStateDesciptor.isDepthWriteEnabled = true
+        depthState = device.makeDepthStencilState(descriptor: depthStateDesciptor)!
+
         viewMatrix = matrix_lookat(eye: simd_float3(2, 2, -5),
                                    point: simd_float3(),
                                    up: simd_float3(0, 1, 0))
@@ -115,6 +127,23 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
                                                   length: colorMapIndicesBufferLength,
                                                   options: [])!
         
+        pieces = [Piece]()
+        let scale = matrix4x4_scale(0.5, 0.5, 0.5)
+        let dimensions = -1...1
+        for x in dimensions {
+            for y in dimensions {
+                for z in dimensions {
+                    if x == 0 && y == 0 && z == 0 {
+                        continue
+                    }
+                    let translation = matrix4x4_translation(Float(x), Float(y), Float(z))
+                    let modelMatrix = translation * scale
+                    let piece = Piece(modelMatrix: modelMatrix)
+                    pieces.append(piece)
+                }
+            }
+        }
+        
         super.init()
     }
     
@@ -139,6 +168,7 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
         pipelineDescriptor.vertexFunction = vertexFunction
         pipelineDescriptor.fragmentFunction = fragmentFunction
         pipelineDescriptor.sampleCount = mtkView.sampleCount
+        pipelineDescriptor.depthAttachmentPixelFormat = mtkView.depthStencilPixelFormat
         
         let colorAttachments0 = pipelineDescriptor.colorAttachments[0]!
         colorAttachments0.pixelFormat = mtkView.colorPixelFormat
@@ -146,25 +176,29 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
         return try device.makeRenderPipelineState(descriptor: pipelineDescriptor)
     }
     
-    private func renderCube(renderEncoder: MTLRenderCommandEncoder) {
+    private func renderPieces(renderEncoder: MTLRenderCommandEncoder) {
         var uniforms = FlatUniforms()
-        uniforms.modelMatrix = matrix4x4_scale(0.5, 0.5, 0.5)
+        uniforms.modelMatrix = matrix_identity_float4x4
         uniforms.viewMatrix = viewMatrix
         uniforms.projectionMatrix = projectionMatrix
         let uniformsLength = MemoryLayout<FlatUniforms>.stride
-        renderEncoder.pushDebugGroup("Draw Cube")
+        renderEncoder.pushDebugGroup("Draw Piece")
         renderEncoder.setRenderPipelineState(flatPipelineState)
+        renderEncoder.setDepthStencilState(depthState)
         renderEncoder.setCullMode(.front)
-        renderEncoder.setVertexBytes(&uniforms, length: uniformsLength, index: 0)
         renderEncoder.setVertexBuffer(mtkMesh.vertexBuffers[0].buffer, offset: 0, index: 1)
         renderEncoder.setVertexBuffer(colorMapBuffer, offset: 0, index: 2)
         renderEncoder.setVertexBuffer(colorMapIndicesBuffer, offset: 0, index: 3)
         let submesh = mtkMesh.submeshes[0]
-        renderEncoder.drawIndexedPrimitives(type: submesh.primitiveType,
-                                            indexCount: submesh.indexCount,
-                                            indexType: submesh.indexType,
-                                            indexBuffer: submesh.indexBuffer.buffer,
-                                            indexBufferOffset: submesh.indexBuffer.offset)
+        for piece in pieces {
+            uniforms.modelMatrix = piece.modelMatrix
+            renderEncoder.setVertexBytes(&uniforms, length: uniformsLength, index: 0)
+            renderEncoder.drawIndexedPrimitives(type: submesh.primitiveType,
+                                                indexCount: submesh.indexCount,
+                                                indexType: submesh.indexType,
+                                                indexBuffer: submesh.indexBuffer.buffer,
+                                                indexBufferOffset: submesh.indexBuffer.offset)
+        }
         renderEncoder.popDebugGroup()
     }
     
@@ -173,7 +207,7 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
             let renderPassDescriptor = view.currentRenderPassDescriptor
             if let renderPassDescriptor = renderPassDescriptor,
                 let renderEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor) {
-                renderCube(renderEncoder: renderEncoder)
+                renderPieces(renderEncoder: renderEncoder)
                 renderEncoder.endEncoding()
             }
             view.currentDrawable.map(commandBuffer.present)
