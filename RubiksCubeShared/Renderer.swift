@@ -89,44 +89,25 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
             let v1 = (vertices + vi1).pointee
             let v2 = (vertices + vi2).pointee
             let v3 = (vertices + vi3).pointee
-            let dir1 = v2.position - v1.position
-            let dir2 = v3.position - v1.position
-            let n = normalize(simd_cross(dir1, dir2))
-            if n.x.closeTo(1) {
-                colorMapIndices[vi1] = 0
-                colorMapIndices[vi2] = 0
-                colorMapIndices[vi3] = 0
-                continue
+            let vs = [v1, v2, v3]
+            let tuples: [((FlatVertex) -> Bool, Int32)] = [
+                ({ v in v.position.x == +1 }, 0),
+                ({ v in v.position.x == -1 }, 1),
+                ({ v in v.position.y == +1 }, 2),
+                ({ v in v.position.y == -1 }, 3),
+                ({ v in v.position.z == +1 }, 4),
+                ({ v in v.position.z == -1 }, 5)
+            ]
+            var colorMapIndex: Int32? = nil
+            tuples.forEach { (predicate, cmi) in
+                if vs.allSatisfy(predicate) {
+                    colorMapIndex = cmi
+                }
             }
-            if n.x.closeTo(-1) {
-                colorMapIndices[vi1] = 1
-                colorMapIndices[vi2] = 1
-                colorMapIndices[vi3] = 1
-                continue
-            }
-            if n.y.closeTo(1) {
-                colorMapIndices[vi1] = 2
-                colorMapIndices[vi2] = 2
-                colorMapIndices[vi3] = 2
-                continue
-            }
-            if n.y.closeTo(-1) {
-                colorMapIndices[vi1] = 3
-                colorMapIndices[vi2] = 3
-                colorMapIndices[vi3] = 3
-                continue
-            }
-            if n.z.closeTo(1) {
-                colorMapIndices[vi1] = 4
-                colorMapIndices[vi2] = 4
-                colorMapIndices[vi3] = 4
-                continue
-            }
-            if n.z.closeTo(-1) {
-                colorMapIndices[vi1] = 5
-                colorMapIndices[vi2] = 5
-                colorMapIndices[vi3] = 5
-                continue
+            if colorMapIndex != nil {
+                colorMapIndices[vi1] = colorMapIndex!
+                colorMapIndices[vi2] = colorMapIndex!
+                colorMapIndices[vi3] = colorMapIndex!
             }
         }
         let colorMapIndicesBufferLength = MemoryLayout<Int32>.stride * colorMapIndices.count

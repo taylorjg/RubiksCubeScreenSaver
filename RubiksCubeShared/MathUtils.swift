@@ -76,9 +76,3 @@ extension matrix_float4x4 {
 func radians_from_degrees(_ degrees: Float) -> Float {
     return (degrees / 180) * .pi
 }
-
-extension Float {
-    func closeTo(_ other: Float) -> Bool {
-        return abs(self - other) <= 1e-6
-    }
-}
