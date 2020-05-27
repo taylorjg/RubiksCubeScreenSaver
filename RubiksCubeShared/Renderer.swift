@@ -11,7 +11,7 @@ import MetalKit
 import simd
 
 private let RED = simd_float4(1, 0, 0, 1)
-private let GREEN = simd_float4(0, 1, 0, 1)
+private let GREEN = simd_float4(0, 0.5, 0, 1)
 private let BLUE = simd_float4(0, 0, 1, 1)
 private let YELLOW = simd_float4(1, 1, 0, 1)
 private let DARK_ORANGE = simd_float4(1, 0.549, 0, 1)
@@ -21,6 +21,7 @@ private let DARK_GREY = simd_float4(0.157, 0.157, 0.157, 1)
 class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
     
     private struct Piece {
+        let coords: Coords
         let modelMatrix: matrix_float4x4
         let colorMap: [simd_float4]
         let colorMapBuffer: MTLBuffer
@@ -36,7 +37,10 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
     private var colorMapIndices: [Int32]
     private let colorMapIndicesBuffer: MTLBuffer
     private var pieces: [Piece]
-    
+    private let quat0: simd_quatf
+    private let quat1: simd_quatf
+    private var iter = 0
+
     init?(mtkView: MTKView, bundle: Bundle? = nil) {
         self.device = mtkView.device!
         mtkView.depthStencilPixelFormat = MTLPixelFormat.depth32Float
@@ -143,12 +147,16 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
             ]
             let colorMapBufferLength = MemoryLayout<simd_float4>.stride * colorMap.count
             let colorMapBuffer = device.makeBuffer(bytes: colorMap, length: colorMapBufferLength, options: [])!
-            let piece = Piece(modelMatrix: modelMatrix,
+            let piece = Piece(coords: solvedCubePiece.coords,
+                              modelMatrix: modelMatrix,
                               colorMap: colorMap,
                               colorMapBuffer: colorMapBuffer)
             pieces.append(piece)
         }
         
+        quat0 = simd_quatf(angle: 0, axis: simd_float3(0, 1, 0))
+        quat1 = simd_quatf(angle: Float.pi / 4, axis: simd_float3(0, 1, 0))
+
         super.init()
     }
     
@@ -195,7 +203,8 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
         renderEncoder.setVertexBuffer(colorMapIndicesBuffer, offset: 0, index: 3)
         let submesh = mtkMesh.submeshes[0]
         for piece in pieces {
-            uniforms.modelMatrix = piece.modelMatrix
+            let rotation = matrix_float4x4(simd_slerp(quat0, quat1, Float(iter) / 60 / 2))
+            uniforms.modelMatrix = rotation * piece.modelMatrix
             renderEncoder.setVertexBytes(&uniforms, length: uniformsLength, index: 0)
             renderEncoder.setVertexBuffer(piece.colorMapBuffer, offset: 0, index: 2)
             renderEncoder.drawIndexedPrimitives(type: submesh.primitiveType,
@@ -218,6 +227,7 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
             view.currentDrawable.map(commandBuffer.present)
             commandBuffer.commit()
             commandBuffer.waitUntilCompleted()
+            iter += 1
         }
     }
     

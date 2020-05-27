@@ -33,8 +33,6 @@
 		C3880E692455A9CB004A2A82 /* ConfigSheetViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3880E682455A9CB004A2A82 /* ConfigSheetViewController.swift */; };
 		C3880E6B2455FD7C004A2A82 /* DefaultsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3880E6A2455FD7C004A2A82 /* DefaultsManager.swift */; };
 		C3C950A6242C1CC700E775BD /* RubiksCubeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3C950A5242C1CC700E775BD /* RubiksCubeView.swift */; };
-		C3F72C5524776E9800541D9C /* ColorMaps.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3F72C5424776E9800541D9C /* ColorMaps.swift */; };
-		C3F72C5624776E9800541D9C /* ColorMaps.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3F72C5424776E9800541D9C /* ColorMaps.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -59,7 +57,6 @@
 		C3C95098242C1BA400E775BD /* RubiksCube.saver */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RubiksCube.saver; sourceTree = BUILT_PRODUCTS_DIR; };
 		C3C9509F242C1BA400E775BD /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		C3C950A5242C1CC700E775BD /* RubiksCubeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RubiksCubeView.swift; sourceTree = "<group>"; };
-		C3F72C5424776E9800541D9C /* ColorMaps.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColorMaps.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -89,7 +86,6 @@
 				C3504DC5242D74FE00C03609 /* Renderer.swift */,
 				C3504DC7242D74FF00C03609 /* Assets.xcassets */,
 				C371F05C2460CE9900203036 /* KeyboardControlDelegate.swift */,
-				C3F72C5424776E9800541D9C /* ColorMaps.swift */,
 				C3318673247AE2B7004DC93A /* FlatShaders.metal */,
 				C3318679247EDD27004DC93A /* CoordsLists.swift */,
 				C331867C247EE4AF004DC93A /* Logic.swift */,
@@ -264,7 +260,6 @@
 				C3504DCF242D74FF00C03609 /* AppDelegate.swift in Sources */,
 				C331867E247EE4AF004DC93A /* Logic.swift in Sources */,
 				C331867B247EDD29004DC93A /* CoordsLists.swift in Sources */,
-				C3F72C5624776E9800541D9C /* ColorMaps.swift in Sources */,
 				C371F05E2460CE9900203036 /* KeyboardControlDelegate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -282,7 +277,6 @@
 				C331867D247EE4AF004DC93A /* Logic.swift in Sources */,
 				C331867A247EDD28004DC93A /* CoordsLists.swift in Sources */,
 				C371F05D2460CE9900203036 /* KeyboardControlDelegate.swift in Sources */,
-				C3F72C5524776E9800541D9C /* ColorMaps.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
