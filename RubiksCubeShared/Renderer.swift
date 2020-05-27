@@ -22,6 +22,8 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
     
     private struct Piece {
         let modelMatrix: matrix_float4x4
+        let colorMap: [simd_float4]
+        let colorMapBuffer: MTLBuffer
     }
     
     private let device: MTLDevice
@@ -31,8 +33,6 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
     private var viewMatrix: matrix_float4x4
     private var projectionMatrix: matrix_float4x4
     private let mtkMesh: MTKMesh
-    private let colorMap: [simd_float4]
-    private let colorMapBuffer: MTLBuffer
     private var colorMapIndices: [Int32]
     private let colorMapIndicesBuffer: MTLBuffer
     private var pieces: [Piece]
@@ -57,15 +57,11 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
         depthStateDesciptor.depthCompareFunction = MTLCompareFunction.less
         depthStateDesciptor.isDepthWriteEnabled = true
         depthState = device.makeDepthStencilState(descriptor: depthStateDesciptor)!
-
+        
         viewMatrix = matrix_lookat(eye: simd_float3(2, 2, -5),
                                    point: simd_float3(),
                                    up: simd_float3(0, 1, 0))
         projectionMatrix = matrix_identity_float4x4
-        
-        colorMap = [RED, GREEN, BLUE, YELLOW, DARK_ORANGE, GHOST_WHITE, DARK_GREY]
-        let colorMapBufferLength = MemoryLayout<simd_float4>.stride * colorMap.count
-        colorMapBuffer = device.makeBuffer(bytes: colorMap, length: colorMapBufferLength, options: [])!
         
         let url = (bundle ?? Bundle.main).url(forResource: "cube-bevelled", withExtension: "obj")
         let vertexDescriptor = MTLVertexDescriptor()
@@ -83,7 +79,7 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
         let mdlMesh = asset.childObjects(of: MDLMesh.self).first as! MDLMesh
         try! mdlMesh.makeVerticesUniqueAndReturnError()
         mtkMesh = try! MTKMesh(mesh: mdlMesh, device: device)
-
+        
         let submesh = mtkMesh.submeshes[0]
         let indicesCount = submesh.indexCount
         let indicesBuffer = submesh.indexBuffer.buffer
@@ -126,22 +122,31 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
         colorMapIndicesBuffer = device.makeBuffer(bytes: colorMapIndices,
                                                   length: colorMapIndicesBufferLength,
                                                   options: [])!
-        
+
         pieces = [Piece]()
         let scale = matrix4x4_scale(0.5, 0.5, 0.5)
-        let dimensions = -1...1
-        for x in dimensions {
-            for y in dimensions {
-                for z in dimensions {
-                    if x == 0 && y == 0 && z == 0 {
-                        continue
-                    }
-                    let translation = matrix4x4_translation(Float(x), Float(y), Float(z))
-                    let modelMatrix = translation * scale
-                    let piece = Piece(modelMatrix: modelMatrix)
-                    pieces.append(piece)
-                }
-            }
+        let solvedCubePieces = makeSolvedCube(cubeSize: 3)
+        for solvedCubePiece in solvedCubePieces {
+            let x = Float(solvedCubePiece.coords.x)
+            let y = Float(solvedCubePiece.coords.y)
+            let z = Float(solvedCubePiece.coords.z)
+            let translation = matrix4x4_translation(x, y, z)
+            let modelMatrix = translation * scale
+            let colorMap = [
+                solvedCubePiece.faces.right ? RED : DARK_GREY,
+                solvedCubePiece.faces.left ? GREEN : DARK_GREY,
+                solvedCubePiece.faces.up ? BLUE : DARK_GREY,
+                solvedCubePiece.faces.down ? YELLOW : DARK_GREY,
+                solvedCubePiece.faces.back ? DARK_ORANGE : DARK_GREY,
+                solvedCubePiece.faces.front ? GHOST_WHITE : DARK_GREY,
+                DARK_GREY
+            ]
+            let colorMapBufferLength = MemoryLayout<simd_float4>.stride * colorMap.count
+            let colorMapBuffer = device.makeBuffer(bytes: colorMap, length: colorMapBufferLength, options: [])!
+            let piece = Piece(modelMatrix: modelMatrix,
+                              colorMap: colorMap,
+                              colorMapBuffer: colorMapBuffer)
+            pieces.append(piece)
         }
         
         super.init()
@@ -187,12 +192,12 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
         renderEncoder.setDepthStencilState(depthState)
         renderEncoder.setCullMode(.front)
         renderEncoder.setVertexBuffer(mtkMesh.vertexBuffers[0].buffer, offset: 0, index: 1)
-        renderEncoder.setVertexBuffer(colorMapBuffer, offset: 0, index: 2)
         renderEncoder.setVertexBuffer(colorMapIndicesBuffer, offset: 0, index: 3)
         let submesh = mtkMesh.submeshes[0]
         for piece in pieces {
             uniforms.modelMatrix = piece.modelMatrix
             renderEncoder.setVertexBytes(&uniforms, length: uniformsLength, index: 0)
+            renderEncoder.setVertexBuffer(piece.colorMapBuffer, offset: 0, index: 2)
             renderEncoder.drawIndexedPrimitives(type: submesh.primitiveType,
                                                 indexCount: submesh.indexCount,
                                                 indexType: submesh.indexType,

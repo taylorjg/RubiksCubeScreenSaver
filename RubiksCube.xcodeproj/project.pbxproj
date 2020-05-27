@@ -14,6 +14,10 @@
 		C3318675247AE2B7004DC93A /* FlatShaders.metal in Sources */ = {isa = PBXBuildFile; fileRef = C3318673247AE2B7004DC93A /* FlatShaders.metal */; };
 		C3318677247AFC5B004DC93A /* cube-bevelled.obj in Resources */ = {isa = PBXBuildFile; fileRef = C3318676247AFC5B004DC93A /* cube-bevelled.obj */; };
 		C3318678247AFC5B004DC93A /* cube-bevelled.obj in Resources */ = {isa = PBXBuildFile; fileRef = C3318676247AFC5B004DC93A /* cube-bevelled.obj */; };
+		C331867A247EDD28004DC93A /* CoordsLists.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3318679247EDD27004DC93A /* CoordsLists.swift */; };
+		C331867B247EDD29004DC93A /* CoordsLists.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3318679247EDD27004DC93A /* CoordsLists.swift */; };
+		C331867D247EE4AF004DC93A /* Logic.swift in Sources */ = {isa = PBXBuildFile; fileRef = C331867C247EE4AF004DC93A /* Logic.swift */; };
+		C331867E247EE4AF004DC93A /* Logic.swift in Sources */ = {isa = PBXBuildFile; fileRef = C331867C247EE4AF004DC93A /* Logic.swift */; };
 		C3504DCF242D74FF00C03609 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3504DCE242D74FF00C03609 /* AppDelegate.swift */; };
 		C3504DD1242D74FF00C03609 /* GameViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3504DD0242D74FF00C03609 /* GameViewController.swift */; };
 		C3504DD4242D74FF00C03609 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = C3504DD2242D74FF00C03609 /* Main.storyboard */; };
@@ -36,6 +40,8 @@
 /* Begin PBXFileReference section */
 		C3318673247AE2B7004DC93A /* FlatShaders.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = FlatShaders.metal; sourceTree = "<group>"; };
 		C3318676247AFC5B004DC93A /* cube-bevelled.obj */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = "cube-bevelled.obj"; sourceTree = "<group>"; };
+		C3318679247EDD27004DC93A /* CoordsLists.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoordsLists.swift; sourceTree = "<group>"; };
+		C331867C247EE4AF004DC93A /* Logic.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Logic.swift; sourceTree = "<group>"; };
 		C3504DC5242D74FE00C03609 /* Renderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Renderer.swift; sourceTree = "<group>"; };
 		C3504DC6242D74FE00C03609 /* ShaderTypes.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ShaderTypes.h; sourceTree = "<group>"; };
 		C3504DC7242D74FF00C03609 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -85,6 +91,8 @@
 				C371F05C2460CE9900203036 /* KeyboardControlDelegate.swift */,
 				C3F72C5424776E9800541D9C /* ColorMaps.swift */,
 				C3318673247AE2B7004DC93A /* FlatShaders.metal */,
+				C3318679247EDD27004DC93A /* CoordsLists.swift */,
+				C331867C247EE4AF004DC93A /* Logic.swift */,
 			);
 			path = RubiksCubeShared;
 			sourceTree = "<group>";
@@ -254,6 +262,8 @@
 				C3504DD1242D74FF00C03609 /* GameViewController.swift in Sources */,
 				C3880E2A2441B8E5004A2A82 /* MathUtils.swift in Sources */,
 				C3504DCF242D74FF00C03609 /* AppDelegate.swift in Sources */,
+				C331867E247EE4AF004DC93A /* Logic.swift in Sources */,
+				C331867B247EDD29004DC93A /* CoordsLists.swift in Sources */,
 				C3F72C5624776E9800541D9C /* ColorMaps.swift in Sources */,
 				C371F05E2460CE9900203036 /* KeyboardControlDelegate.swift in Sources */,
 			);
@@ -269,6 +279,8 @@
 				C3880E692455A9CB004A2A82 /* ConfigSheetViewController.swift in Sources */,
 				C32DDEDF24368FB500FB4CB4 /* Renderer.swift in Sources */,
 				C3C950A6242C1CC700E775BD /* RubiksCubeView.swift in Sources */,
+				C331867D247EE4AF004DC93A /* Logic.swift in Sources */,
+				C331867A247EDD28004DC93A /* CoordsLists.swift in Sources */,
 				C371F05D2460CE9900203036 /* KeyboardControlDelegate.swift in Sources */,
 				C3F72C5524776E9800541D9C /* ColorMaps.swift in Sources */,
 			);
