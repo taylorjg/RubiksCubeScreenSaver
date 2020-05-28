@@ -15,7 +15,7 @@ struct CubeDimensions {
     let isEvenSizedCube: Bool
 }
 
-struct Coords {
+struct Coords: Equatable {
     let x: Int
     let y: Int
     let z: Int
