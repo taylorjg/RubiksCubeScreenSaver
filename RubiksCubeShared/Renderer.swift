@@ -62,7 +62,9 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
         depthStateDesciptor.isDepthWriteEnabled = true
         depthState = device.makeDepthStencilState(descriptor: depthStateDesciptor)!
         
-        viewMatrix = matrix_lookat(eye: simd_float3(2, 2, 5),
+        let cubeSize = 5
+        
+        viewMatrix = matrix_lookat(eye: simd_float3(2, 0.8 * Float(cubeSize), 2.0 * Float(cubeSize)),
                                    point: simd_float3(),
                                    up: simd_float3(0, 1, 0))
         projectionMatrix = matrix_identity_float4x4
@@ -128,7 +130,6 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
                                                   options: [])!
 
         pieces = [Piece]()
-        let cubeSize = 3
         let solvedCubePieces = makeSolvedCube(cubeSize: cubeSize)
         let cubeDimensions = getCubeDimensions(cubeSize: cubeSize)
         let scale = matrix4x4_scale(0.5, 0.5, 0.5)
