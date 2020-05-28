@@ -22,8 +22,8 @@ func makeFaces(cubeDimensions: CubeDimensions, coords: Coords) -> Faces {
                  down: coords.y == cubeDimensions.vmin,
                  left: coords.x == cubeDimensions.vmin,
                  right: coords.x == cubeDimensions.vmax,
-                 front: coords.z == cubeDimensions.vmin,
-                 back: coords.z == cubeDimensions.vmax)
+                 front: coords.z == cubeDimensions.vmax,
+                 back: coords.z == cubeDimensions.vmin)
 }
 
 struct SolvedCubePiece {

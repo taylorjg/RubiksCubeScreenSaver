@@ -62,7 +62,7 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
         depthStateDesciptor.isDepthWriteEnabled = true
         depthState = device.makeDepthStencilState(descriptor: depthStateDesciptor)!
         
-        viewMatrix = matrix_lookat(eye: simd_float3(2, 2, -5),
+        viewMatrix = matrix_lookat(eye: simd_float3(2, 2, 5),
                                    point: simd_float3(),
                                    up: simd_float3(0, 1, 0))
         projectionMatrix = matrix_identity_float4x4
@@ -103,10 +103,10 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
             let v3 = (vertices + vi3).pointee
             let vs = [v1, v2, v3]
             let tuples: [((FlatVertex) -> Bool, Int32)] = [
-                ({ v in v.position.x == +1 }, 0),
-                ({ v in v.position.x == -1 }, 1),
-                ({ v in v.position.y == +1 }, 2),
-                ({ v in v.position.y == -1 }, 3),
+                ({ v in v.position.y == +1 }, 0),
+                ({ v in v.position.y == -1 }, 1),
+                ({ v in v.position.x == -1 }, 2),
+                ({ v in v.position.x == +1 }, 3),
                 ({ v in v.position.z == +1 }, 4),
                 ({ v in v.position.z == -1 }, 5)
             ]
@@ -128,21 +128,27 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
                                                   options: [])!
 
         pieces = [Piece]()
+        let cubeSize = 3
+        let solvedCubePieces = makeSolvedCube(cubeSize: cubeSize)
+        let cubeDimensions = getCubeDimensions(cubeSize: cubeSize)
         let scale = matrix4x4_scale(0.5, 0.5, 0.5)
-        let solvedCubePieces = makeSolvedCube(cubeSize: 3)
         for solvedCubePiece in solvedCubePieces {
             let x = Float(solvedCubePiece.coords.x)
             let y = Float(solvedCubePiece.coords.y)
             let z = Float(solvedCubePiece.coords.z)
-            let translation = matrix4x4_translation(x, y, z)
-            let modelMatrix = translation * scale
+            func towardsOrigin(_ v: Float) -> Float { v < 0 ? +0.5 : -0.5 }
+            let translation1 = cubeDimensions.isEvenSizedCube
+                ? matrix4x4_translation(towardsOrigin(x), towardsOrigin(y), towardsOrigin(z))
+                : matrix_identity_float4x4
+            let translation2 = matrix4x4_translation(x, y, z)
+            let modelMatrix = translation2 * translation1 * scale
             let colorMap = [
-                solvedCubePiece.faces.right ? RED : DARK_GREY,
-                solvedCubePiece.faces.left ? GREEN : DARK_GREY,
                 solvedCubePiece.faces.up ? BLUE : DARK_GREY,
-                solvedCubePiece.faces.down ? YELLOW : DARK_GREY,
-                solvedCubePiece.faces.back ? DARK_ORANGE : DARK_GREY,
-                solvedCubePiece.faces.front ? GHOST_WHITE : DARK_GREY,
+                solvedCubePiece.faces.down ? GREEN : DARK_GREY,
+                solvedCubePiece.faces.left ? RED : DARK_GREY,
+                solvedCubePiece.faces.right ? DARK_ORANGE : DARK_GREY,
+                solvedCubePiece.faces.front ? YELLOW : DARK_GREY,
+                solvedCubePiece.faces.back ? GHOST_WHITE : DARK_GREY,
                 DARK_GREY
             ]
             let colorMapBufferLength = MemoryLayout<simd_float4>.stride * colorMap.count
