@@ -44,7 +44,7 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
     init?(mtkView: MTKView, bundle: Bundle? = nil) {
         self.device = mtkView.device!
         mtkView.depthStencilPixelFormat = MTLPixelFormat.depth32Float
-        mtkView.sampleCount = 4
+        // mtkView.sampleCount = 4
         guard let queue = self.device.makeCommandQueue() else { return nil }
         self.commandQueue = queue
         
@@ -130,10 +130,10 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
                                                   options: [])!
         
         uiPieces = [UIPiece]()
-        let cube = makeSolvedCube(cubeSize: cubeSize)
+        let solvedCube = makeSolvedCube(cubeSize: cubeSize)
         let cubeDimensions = getCubeDimensions(cubeSize: cubeSize)
         let scale = matrix4x4_scale(0.5, 0.5, 0.5)
-        for logicPiece in cube {
+        for logicPiece in solvedCube {
             let x = Float(logicPiece.coords.x)
             let y = Float(logicPiece.coords.y)
             let z = Float(logicPiece.coords.z)
@@ -144,12 +144,12 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
             let translation2 = matrix4x4_translation(x, y, z)
             let modelMatrix = translation2 * translation1 * scale
             let colorMap = [
-                logicPiece.faces.up ? BLUE : DARK_GREY,
-                logicPiece.faces.down ? GREEN : DARK_GREY,
-                logicPiece.faces.left ? RED : DARK_GREY,
-                logicPiece.faces.right ? DARK_ORANGE : DARK_GREY,
-                logicPiece.faces.front ? YELLOW : DARK_GREY,
-                logicPiece.faces.back ? GHOST_WHITE : DARK_GREY,
+                logicPiece.visibleFaces.up ? BLUE : DARK_GREY,
+                logicPiece.visibleFaces.down ? GREEN : DARK_GREY,
+                logicPiece.visibleFaces.left ? RED : DARK_GREY,
+                logicPiece.visibleFaces.right ? DARK_ORANGE : DARK_GREY,
+                logicPiece.visibleFaces.front ? YELLOW : DARK_GREY,
+                logicPiece.visibleFaces.back ? GHOST_WHITE : DARK_GREY,
                 DARK_GREY
             ]
             let colorMapBufferLength = MemoryLayout<simd_float4>.stride * colorMap.count
@@ -165,6 +165,20 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
         quat1 = simd_quatf(angle: Float.pi / 4, axis: simd_float3(0, 1, 0))
         
         super.init()
+        
+        let allMoves = makeMoveIdsToMoves(cubeSize: cubeSize)
+        let scrambleMoves = [allMoves[5]!, allMoves[13]!, allMoves[9]!, allMoves[11]!]
+        let unscrambleMoves = Array(scrambleMoves.map { move in allMoves[move.oppositeId]! }.reversed())
+        print(scrambleMoves)
+        print(unscrambleMoves)
+        let scrambledCube = makeMoves(moves: scrambleMoves, initialCube: solvedCube)
+        let unscrambledCube = makeMoves(moves: unscrambleMoves, initialCube: scrambledCube)
+        print("solvedCube:")
+        solvedCube.forEach { piece in print("id: \(piece.id); coords: \(piece.coords)")}
+        print("scrambledCube:")
+        scrambledCube.forEach { piece in print("id: \(piece.id); coords: \(piece.coords)")}
+        print("unscrambledCube:")
+        unscrambledCube.forEach { piece in print("id: \(piece.id); coords: \(piece.coords)")}
     }
     
     func onSwitchFractal() {
