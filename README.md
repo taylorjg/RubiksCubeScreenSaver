@@ -10,8 +10,8 @@ However, I hope to implement a solving algorithm properly at a later date.
 * ~~Render a basic solved cube with flat shading~~
 * Simplify/improve the assignment of colours to faces by adding materials to the model in Blender
   * This should result in a submesh per material when loading the model in Model I/O making it easier to assign colours
-* Implement the main logic
-* Render a scrambled cube
+* ~~Implement the main logic~~
+* ~~Render a scrambled cube~~
 * Render each step in the solving of the cube (not animated)
 * Animate each step in the solving of the cube
 * Implement ambient/diffuse/specular lighting

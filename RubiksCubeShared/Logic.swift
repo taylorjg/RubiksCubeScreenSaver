@@ -17,7 +17,7 @@ struct VisibleFaces {
     let back: Bool
 }
 
-struct LogicPiece {
+struct LogicalPiece {
     let id: Int
     let coords: Coords
     let visibleFaces: VisibleFaces
@@ -27,7 +27,7 @@ struct LogicPiece {
 struct Move {
     let id: Int
     let oppositeId: Int
-    let makeMove: ([LogicPiece]) -> [LogicPiece]
+    let makeMove: ([LogicalPiece]) -> [LogicalPiece]
     let rotation: matrix_float4x4
     let coordsList: [Coords]
     let numTurns: Int
@@ -42,46 +42,46 @@ private func getVisibleFaces(cubeDimensions: CubeDimensions, coords: Coords) -> 
                         back: coords.z == cubeDimensions.vmin)
 }
 
-func makeSolvedCube(cubeSize: Int) -> [LogicPiece] {
+func makeSolvedCube(cubeSize: Int) -> [LogicalPiece] {
     let cubeDimensions = getCubeDimensions(cubeSize: cubeSize)
     let allCoordsList = allCoords(cubeSize: cubeSize)
     return allCoordsList.enumerated().map { (index, coords) in
         let visibleFaces = getVisibleFaces(cubeDimensions: cubeDimensions, coords: coords)
-        return LogicPiece(id: index,
-                          coords: coords,
-                          visibleFaces: visibleFaces,
-                          accumulatedRotations: matrix_identity_float4x4)
+        return LogicalPiece(id: index,
+                            coords: coords,
+                            visibleFaces: visibleFaces,
+                            accumulatedRotations: matrix_identity_float4x4)
     }
 }
 
-func getPieces(cube: [LogicPiece], coordsList: [Coords]) -> [LogicPiece] {
-    cube.filter { logicPiece in coordsList.contains(logicPiece.coords) }
-}
+//func getPieces(cube: [LogicalPiece], coordsList: [Coords]) -> [LogicalPiece] {
+//    cube.filter { logicalPiece in coordsList.contains(logicalPiece.coords) }
+//}
 
-private func rotatePiece(logicPiece: LogicPiece, rotation: matrix_float4x4) -> LogicPiece {
-    let x = Float(logicPiece.coords.x)
-    let y = Float(logicPiece.coords.y)
-    let z = Float(logicPiece.coords.z)
+private func rotatePiece(logicalPiece: LogicalPiece, rotation: matrix_float4x4) -> LogicalPiece {
+    let x = Float(logicalPiece.coords.x)
+    let y = Float(logicalPiece.coords.y)
+    let z = Float(logicalPiece.coords.z)
     let vector = simd_float4(x, y, z, 1)
     let rotated = rotation * vector
     let x2 = Int(round(rotated.x))
     let y2 = Int(round(rotated.y))
     let z2 = Int(round(rotated.z))
     let coords2 = Coords(x2, y2, z2)
-    let accumulatedRotations2 = rotation * logicPiece.accumulatedRotations
-    return LogicPiece(id: logicPiece.id,
-                      coords: coords2,
-                      visibleFaces: logicPiece.visibleFaces,
-                      accumulatedRotations: accumulatedRotations2)
+    let accumulatedRotations2 = rotation * logicalPiece.accumulatedRotations
+    return LogicalPiece(id: logicalPiece.id,
+                        coords: coords2,
+                        visibleFaces: logicalPiece.visibleFaces,
+                        accumulatedRotations: accumulatedRotations2)
 }
 
 private func rotatePieces(rotation: matrix_float4x4,
                           coordsList: [Coords],
-                          cube: [LogicPiece]) -> [LogicPiece] {
-    cube.map { logicPiece in
-        coordsList.contains(logicPiece.coords)
-            ? rotatePiece(logicPiece: logicPiece, rotation: rotation)
-            : logicPiece
+                          cube: [LogicalPiece]) -> [LogicalPiece] {
+    cube.map { logicalPiece in
+        coordsList.contains(logicalPiece.coords)
+            ? rotatePiece(logicalPiece: logicalPiece, rotation: rotation)
+            : logicalPiece
     }
 }
 
@@ -100,7 +100,7 @@ private func makeKvp(id: Int,
                      rotation: matrix_float4x4,
                      coordsList: [Coords],
                      numTurns: Int) -> (Int, Move) {
-    let makeMove: ([LogicPiece]) -> [LogicPiece] = { cube in
+    let makeMove: ([LogicalPiece]) -> [LogicalPiece] = { cube in
         rotatePieces(rotation: rotation, coordsList: coordsList, cube: cube)
     }
     let move = Move(id: id,
@@ -149,6 +149,6 @@ func makeMoveIdsToMoves(cubeSize: Int) -> [Int: Move] {
     return [Int: Move](uniqueKeysWithValues: kvps)
 }
 
-func makeMoves(moves: [Move], initialCube: [LogicPiece]) -> [LogicPiece] {
+func makeMoves(moves: [Move], initialCube: [LogicalPiece]) -> [LogicalPiece] {
     moves.reduce(initialCube, { (currentCube, move) in move.makeMove(currentCube) })
 }
