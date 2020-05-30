@@ -83,11 +83,7 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
         depthStateDesciptor.isDepthWriteEnabled = true
         depthState = device.makeDepthStencilState(descriptor: depthStateDesciptor)!
         
-        let cubeSize = 3
-        
-        viewMatrix = matrix_lookat(eye: simd_float3(2, 0.8 * Float(cubeSize), 2.0 * Float(cubeSize)),
-                                   point: simd_float3(),
-                                   up: simd_float3(0, 1, 0))
+        viewMatrix = matrix_identity_float4x4
         projectionMatrix = matrix_identity_float4x4
         
         mtkMesh = Renderer.loadCubeModel(device: device, bundle: bundle)
@@ -98,7 +94,13 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
         
         super.init()
         
-        scramble(cubeSize: cubeSize)
+        scramble()
+    }
+    
+    private func setViewMatrix(cubeSize: Int) {
+        viewMatrix = matrix_lookat(eye: simd_float3(2, 0.8 * Float(cubeSize), 2.0 * Float(cubeSize)),
+                                   point: simd_float3(),
+                                   up: simd_float3(0, 1, 0))
     }
     
     private class func loadCubeModel(device: MTLDevice, bundle: Bundle?) -> MTKMesh {
@@ -169,7 +171,7 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
         return colorMapIndicesBuffer
     }
     
-    private class func createVisualPieces(device: MTLDevice, cubeSize: Int, solvedCube: [LogicalPiece]) -> [VisualPiece] {
+    private func createVisualPieces(cubeSize: Int, solvedCube: [LogicalPiece]) -> [VisualPiece] {
         var visualPieces = [VisualPiece]()
         let cubeDimensions = getCubeDimensions(cubeSize: cubeSize)
         let scale = matrix4x4_scale(0.5, 0.5, 0.5)
@@ -223,7 +225,7 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
     private func startAnimation() {
         guard let move = unscrambleMoves.last else {
             DispatchQueue.main.asyncAfter(deadline: .now() + Double(10)) {
-                self.scramble(cubeSize: 3)
+                self.scramble()
             }
             return
         }
@@ -249,10 +251,19 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
         }
     }
     
-    private func scramble(cubeSize: Int) {
+    private func scramble() {
+        let ranges = [
+            2: 5...10,
+            3: 10...20,
+            4: 15...25,
+            5: 15...30
+        ]
+        let cubeSize = Int.random(in: 2...5)
+        let numMoves = Int.random(in: ranges[cubeSize] ?? 10...20)
+        setViewMatrix(cubeSize: cubeSize)
         let solvedCube = makeSolvedCube(cubeSize: cubeSize)
-        visualPieces = Renderer.createVisualPieces(device: device, cubeSize: cubeSize, solvedCube: solvedCube)
-        (scrambleMoves, unscrambleMoves) = getRandomMoves(cubeSize: cubeSize, numMoves: 25)
+        visualPieces = createVisualPieces(cubeSize: cubeSize, solvedCube: solvedCube)
+        (scrambleMoves, unscrambleMoves) = getRandomMoves(cubeSize: cubeSize, numMoves: numMoves)
         cube = makeMoves(moves: scrambleMoves, initialCube: solvedCube)
         updateVisualPieces()
         startAnimation()
