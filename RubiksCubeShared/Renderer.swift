@@ -23,6 +23,7 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
     private struct VisualPiece {
         let id: Int
         let modelMatrix: matrix_float4x4
+        let rotation: matrix_float4x4
         let colorMap: [simd_float4]
         let colorMapBuffer: MTLBuffer
     }
@@ -36,7 +37,8 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
     private let mtkMesh: MTKMesh
     private var colorMapIndices: [Int32]
     private let colorMapIndicesBuffer: MTLBuffer
-    private let cube: [LogicalPiece]
+    private var cube: [LogicalPiece]
+    private var unscrambleMoves: [Move]
     private var visualPieces: [VisualPiece]
     private let quat0: simd_quatf
     private let quat1: simd_quatf
@@ -70,19 +72,7 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
                                    up: simd_float3(0, 1, 0))
         projectionMatrix = matrix_identity_float4x4
         
-        let url = (bundle ?? Bundle.main).url(forResource: "cube-bevelled", withExtension: "obj")
-        let vertexDescriptor = MTLVertexDescriptor()
-        vertexDescriptor.attributes[0].format = .float3
-        vertexDescriptor.attributes[0].offset = 0
-        vertexDescriptor.attributes[0].bufferIndex = 0
-        vertexDescriptor.layouts[0].stride = MemoryLayout<FlatVertex>.stride
-        let meshDescriptor = MTKModelIOVertexDescriptorFromMetal(vertexDescriptor)
-        (meshDescriptor.attributes[0] as! MDLVertexAttribute).name = MDLVertexAttributePosition
-        let allocator = MTKMeshBufferAllocator(device: device)
-        let asset = MDLAsset(url: url!,
-                             vertexDescriptor: meshDescriptor,
-                             bufferAllocator: allocator)
-        
+        let asset = Renderer.loadCubeModel(device: device, bundle: bundle)
         let mdlMesh = asset.childObjects(of: MDLMesh.self).first as! MDLMesh
         try! mdlMesh.makeVerticesUniqueAndReturnError()
         mtkMesh = try! MTKMesh(mesh: mdlMesh, device: device)
@@ -119,10 +109,10 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
                     colorMapIndex = cmi
                 }
             }
-            if colorMapIndex != nil {
-                colorMapIndices[vi1] = colorMapIndex!
-                colorMapIndices[vi2] = colorMapIndex!
-                colorMapIndices[vi3] = colorMapIndex!
+            if let colorMapIndex = colorMapIndex {
+                colorMapIndices[vi1] = colorMapIndex
+                colorMapIndices[vi2] = colorMapIndex
+                colorMapIndices[vi3] = colorMapIndex
             }
         }
         let colorMapIndicesBufferLength = MemoryLayout<Int32>.stride * colorMapIndices.count
@@ -139,8 +129,9 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
             allMoves[23]!,
             allMoves[19]!,
             allMoves[2]!,
-            allMoves[7]!
+            allMoves[0]!
         ]
+        unscrambleMoves = scrambleMoves.map { move in allMoves[move.oppositeId]! }
         let solvedCube = makeSolvedCube(cubeSize: cubeSize)
         cube = makeMoves(moves: scrambleMoves, initialCube: solvedCube)
 
@@ -148,16 +139,16 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
         let cubeDimensions = getCubeDimensions(cubeSize: cubeSize)
         let scale = matrix4x4_scale(0.5, 0.5, 0.5)
         for logicalPiece in cube {
-            let x = Float(logicalPiece.coords.x)
-            let y = Float(logicalPiece.coords.y)
-            let z = Float(logicalPiece.coords.z)
+            let solvedCubePiece = solvedCube.first(where: { scp in scp.id == logicalPiece.id })!
+            let x = Float(solvedCubePiece.coords.x)
+            let y = Float(solvedCubePiece.coords.y)
+            let z = Float(solvedCubePiece.coords.z)
             func towardsOrigin(_ v: Float) -> Float { v < 0 ? +0.5 : -0.5 }
-            let rotation = logicalPiece.accumulatedRotations
             let translation1 = cubeDimensions.isEvenSizedCube
                 ? matrix4x4_translation(towardsOrigin(x), towardsOrigin(y), towardsOrigin(z))
                 : matrix_identity_float4x4
             let translation2 = matrix4x4_translation(x, y, z)
-            let modelMatrix = translation2 * translation1 * scale * rotation
+            let modelMatrix = translation2 * translation1 * scale
             let colorMap = [
                 logicalPiece.visibleFaces.up ? BLUE : DARK_GREY,
                 logicalPiece.visibleFaces.down ? GREEN : DARK_GREY,
@@ -171,6 +162,7 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
             let colorMapBuffer = device.makeBuffer(bytes: colorMap, length: colorMapBufferLength, options: [])!
             let visualPiece = VisualPiece(id: logicalPiece.id,
                                           modelMatrix: modelMatrix,
+                                          rotation: logicalPiece.accumulatedRotations,
                                           colorMap: colorMap,
                                           colorMapBuffer: colorMapBuffer)
             visualPieces.append(visualPiece)
@@ -181,6 +173,25 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
         
         super.init()
         
+        makeNextUnscrambleMove()
+    }
+    
+    private func makeNextUnscrambleMove() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + Double(1)) {
+            let move = self.unscrambleMoves.popLast()
+            if let move = move {
+                self.cube = move.makeMove(self.cube)
+                self.visualPieces = self.visualPieces.map { visualPiece in
+                    let logicalPiece = self.cube.first(where: { logicalPiece in logicalPiece.id == visualPiece.id})!
+                    return VisualPiece(id: visualPiece.id,
+                                       modelMatrix: visualPiece.modelMatrix,
+                                       rotation: logicalPiece.accumulatedRotations,
+                                       colorMap: visualPiece.colorMap,
+                                       colorMapBuffer: visualPiece.colorMapBuffer)
+                }
+                self.makeNextUnscrambleMove()
+            }
+        }
     }
     
     func onSwitchFractal() {
@@ -189,7 +200,23 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
     func onSwitchColorMap() {
     }
     
-    class func buildRenderPipelineState(device: MTLDevice,
+    private class func loadCubeModel(device: MTLDevice, bundle: Bundle?) -> MDLAsset {
+        let url = (bundle ?? Bundle.main).url(forResource: "cube-bevelled", withExtension: "obj")
+        let vertexDescriptor = MTLVertexDescriptor()
+        vertexDescriptor.attributes[0].format = .float3
+        vertexDescriptor.attributes[0].offset = 0
+        vertexDescriptor.attributes[0].bufferIndex = 0
+        vertexDescriptor.layouts[0].stride = MemoryLayout<FlatVertex>.stride
+        let meshDescriptor = MTKModelIOVertexDescriptorFromMetal(vertexDescriptor)
+        (meshDescriptor.attributes[0] as! MDLVertexAttribute).name = MDLVertexAttributePosition
+        let allocator = MTKMeshBufferAllocator(device: device)
+        let asset = MDLAsset(url: url!,
+                             vertexDescriptor: meshDescriptor,
+                             bufferAllocator: allocator)
+        return asset
+    }
+    
+    private class func buildRenderPipelineState(device: MTLDevice,
                                         mtkView: MTKView,
                                         bundle: Bundle?) throws -> MTLRenderPipelineState {
         let library = bundle != nil
@@ -214,7 +241,6 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
     
     private func renderCube(renderEncoder: MTLRenderCommandEncoder) {
         var uniforms = FlatUniforms()
-        uniforms.modelMatrix = matrix_identity_float4x4
         uniforms.viewMatrix = viewMatrix
         uniforms.projectionMatrix = projectionMatrix
         let uniformsLength = MemoryLayout<FlatUniforms>.stride
@@ -226,8 +252,9 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
         renderEncoder.setVertexBuffer(colorMapIndicesBuffer, offset: 0, index: 3)
         let submesh = mtkMesh.submeshes[0]
         for visualPiece in visualPieces {
-            let rotation = matrix_float4x4(simd_slerp(quat0, quat1, Float(iter) / 60 / 2))
-            uniforms.modelMatrix = rotation * visualPiece.modelMatrix
+            let cubeRotation = matrix_float4x4(simd_slerp(quat0, quat1, Float(iter) / 60 / 2))
+            let pieceRotation = visualPiece.rotation
+            uniforms.modelMatrix = cubeRotation * pieceRotation * visualPiece.modelMatrix
             renderEncoder.setVertexBytes(&uniforms, length: uniformsLength, index: 0)
             renderEncoder.setVertexBuffer(visualPiece.colorMapBuffer, offset: 0, index: 2)
             renderEncoder.drawIndexedPrimitives(type: submesh.primitiveType,
