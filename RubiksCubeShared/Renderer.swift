@@ -28,6 +28,23 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
         let colorMapBuffer: MTLBuffer
     }
     
+    private struct Animation {
+        let ids: [Int]
+        let quat0: simd_quatf
+        let quat1: simd_quatf
+        let totalFrames: Int
+        var remainingFrames: Int
+        let onCompletion: () -> Void
+        mutating func tick() {
+            if remainingFrames > 0 {
+                remainingFrames -= 1
+                if remainingFrames == 0 {
+                    onCompletion()
+                }
+            }
+        }
+    }
+    
     private let device: MTLDevice
     private let commandQueue: MTLCommandQueue
     private let flatPipelineState: MTLRenderPipelineState
@@ -40,6 +57,7 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
     private var cube: [LogicalPiece]
     private var unscrambleMoves: [Move]
     private var visualPieces: [VisualPiece]
+    private var animation: Animation?
     private let quat0: simd_quatf
     private let quat1: simd_quatf
     private var iter = 0
@@ -168,12 +186,23 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
             visualPieces.append(visualPiece)
         }
         
-        quat0 = simd_quatf(angle: 0, axis: simd_float3(0, 1, 0))
+        quat0 = simd_quatf(matrix_identity_float4x4)
         quat1 = simd_quatf(angle: Float.pi / 4, axis: simd_float3(0, 1, 0))
         
         super.init()
         
         makeNextUnscrambleMove()
+        
+        let move = unscrambleMoves.last!
+        let ids = getPieces(cube: cube, coordsList: move.coordsList)
+            .map { logicalPiece in logicalPiece.id }
+        let totalFrames = 45 * move.numTurns
+        animation = Animation(ids: ids,
+                              quat0: simd_quatf(matrix_identity_float4x4),
+                              quat1: simd_quatf(move.rotation),
+                              totalFrames: totalFrames,
+                              remainingFrames: totalFrames,
+                              onCompletion: { print("Animation complete!") })
     }
     
     private func makeNextUnscrambleMove() {
@@ -238,6 +267,16 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
         return try device.makeRenderPipelineState(descriptor: pipelineDescriptor)
     }
     
+    private func calcAnimationRotation(visualPiece: VisualPiece) -> matrix_float4x4 {
+        guard
+            let animation = animation,
+            animation.remainingFrames > 0,
+            animation.ids.contains(visualPiece.id)
+            else { return matrix_identity_float4x4 }
+        let t = Float(animation.remainingFrames) / Float(animation.totalFrames)
+        return matrix_float4x4(simd_slerp(animation.quat0, animation.quat1, t))
+    }
+    
     private func renderCube(renderEncoder: MTLRenderCommandEncoder) {
         var uniforms = FlatUniforms()
         uniforms.viewMatrix = viewMatrix
@@ -251,9 +290,10 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
         renderEncoder.setVertexBuffer(colorMapIndicesBuffer, offset: 0, index: 3)
         let submesh = mtkMesh.submeshes[0]
         for visualPiece in visualPieces {
-            let cubeRotation = matrix_float4x4(simd_slerp(quat0, quat1, Float(iter) / 60 / 2))
+            let cubeRotation = matrix_float4x4(simd_slerp(quat0, quat1, Float(iter) / 60 / 4))
+            let animationRotation = calcAnimationRotation(visualPiece: visualPiece)
             let pieceRotation = visualPiece.rotation
-            uniforms.modelMatrix = cubeRotation * pieceRotation * visualPiece.modelMatrix
+            uniforms.modelMatrix = cubeRotation * animationRotation * pieceRotation * visualPiece.modelMatrix
             renderEncoder.setVertexBytes(&uniforms, length: uniformsLength, index: 0)
             renderEncoder.setVertexBuffer(visualPiece.colorMapBuffer, offset: 0, index: 2)
             renderEncoder.drawIndexedPrimitives(type: submesh.primitiveType,
@@ -263,6 +303,7 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
                                                 indexBufferOffset: submesh.indexBuffer.offset)
         }
         renderEncoder.popDebugGroup()
+        animation?.tick()
     }
     
     func draw(in view: MTKView) {
