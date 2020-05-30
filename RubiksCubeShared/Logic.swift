@@ -152,3 +152,15 @@ func makeMoveIdsToMoves(cubeSize: Int) -> [Int: Move] {
 func makeMoves(moves: [Move], initialCube: [LogicalPiece]) -> [LogicalPiece] {
     moves.reduce(initialCube, { (currentCube, move) in move.makeMove(currentCube) })
 }
+
+func getRandomMoves(cubeSize: Int, numMoves: Int) -> ([Move], [Move]) {
+    let allMoves = makeMoveIdsToMoves(cubeSize: cubeSize)
+    let scrambleMoves = (0..<numMoves).map { _ -> Move in
+        let randomMoveId = Int.random(in: 0..<allMoves.count)
+        return allMoves[randomMoveId]!
+    }
+    let unscrambleMoves = scrambleMoves.map { scrambleMove in
+        return allMoves[scrambleMove.oppositeId]!
+    }
+    return (scrambleMoves, unscrambleMoves)
+}
