@@ -9,6 +9,4 @@
 import Foundation
 
 protocol KeyboardControlDelegate {
-    func onSwitchFractal()
-    func onSwitchColorMap()
 }

@@ -54,9 +54,9 @@ func makeSolvedCube(cubeSize: Int) -> [LogicalPiece] {
     }
 }
 
-//func getPieces(cube: [LogicalPiece], coordsList: [Coords]) -> [LogicalPiece] {
-//    cube.filter { logicalPiece in coordsList.contains(logicalPiece.coords) }
-//}
+func getPieces(cube: [LogicalPiece], coordsList: [Coords]) -> [LogicalPiece] {
+    cube.filter { logicalPiece in coordsList.contains(logicalPiece.coords) }
+}
 
 private func rotatePiece(logicalPiece: LogicalPiece, rotation: matrix_float4x4) -> LogicalPiece {
     let x = Float(logicalPiece.coords.x)

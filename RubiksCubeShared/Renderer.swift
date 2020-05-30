@@ -72,8 +72,8 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
                                    up: simd_float3(0, 1, 0))
         projectionMatrix = matrix_identity_float4x4
         
-        let asset = Renderer.loadCubeModel(device: device, bundle: bundle)
-        let mdlMesh = asset.childObjects(of: MDLMesh.self).first as! MDLMesh
+        let mdlAsset = Renderer.loadCubeModel(device: device, bundle: bundle)
+        let mdlMesh = mdlAsset.childObjects(of: MDLMesh.self).first as! MDLMesh
         try! mdlMesh.makeVerticesUniqueAndReturnError()
         mtkMesh = try! MTKMesh(mesh: mdlMesh, device: device)
         
@@ -134,7 +134,7 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
         unscrambleMoves = scrambleMoves.map { move in allMoves[move.oppositeId]! }
         let solvedCube = makeSolvedCube(cubeSize: cubeSize)
         cube = makeMoves(moves: scrambleMoves, initialCube: solvedCube)
-
+        
         visualPieces = [VisualPiece]()
         let cubeDimensions = getCubeDimensions(cubeSize: cubeSize)
         let scale = matrix4x4_scale(0.5, 0.5, 0.5)
@@ -178,26 +178,26 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
     
     private func makeNextUnscrambleMove() {
         DispatchQueue.main.asyncAfter(deadline: .now() + Double(1)) {
-            let move = self.unscrambleMoves.popLast()
-            if let move = move {
-                self.cube = move.makeMove(self.cube)
-                self.visualPieces = self.visualPieces.map { visualPiece in
-                    let logicalPiece = self.cube.first(where: { logicalPiece in logicalPiece.id == visualPiece.id})!
-                    return VisualPiece(id: visualPiece.id,
-                                       modelMatrix: visualPiece.modelMatrix,
-                                       rotation: logicalPiece.accumulatedRotations,
-                                       colorMap: visualPiece.colorMap,
-                                       colorMapBuffer: visualPiece.colorMapBuffer)
-                }
-                self.makeNextUnscrambleMove()
+            guard let move = self.unscrambleMoves.popLast() else {
+                return
             }
+            self.cube = move.makeMove(self.cube)
+            let logicalPieces = getPieces(cube: self.cube, coordsList: move.coordsList)
+            func findLogicalPiece(id: Int) -> LogicalPiece? {
+                logicalPieces.first(where: { logicalPiece in logicalPiece.id == id })
+            }
+            self.visualPieces = self.visualPieces.map { visualPiece in
+                guard let logicalPiece = findLogicalPiece(id: visualPiece.id) else {
+                    return visualPiece
+                }
+                return VisualPiece(id: visualPiece.id,
+                                   modelMatrix: visualPiece.modelMatrix,
+                                   rotation: logicalPiece.accumulatedRotations,
+                                   colorMap: visualPiece.colorMap,
+                                   colorMapBuffer: visualPiece.colorMapBuffer)
+            }
+            self.makeNextUnscrambleMove()
         }
-    }
-    
-    func onSwitchFractal() {
-    }
-    
-    func onSwitchColorMap() {
     }
     
     private class func loadCubeModel(device: MTLDevice, bundle: Bundle?) -> MDLAsset {
@@ -210,15 +210,14 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
         let meshDescriptor = MTKModelIOVertexDescriptorFromMetal(vertexDescriptor)
         (meshDescriptor.attributes[0] as! MDLVertexAttribute).name = MDLVertexAttributePosition
         let allocator = MTKMeshBufferAllocator(device: device)
-        let asset = MDLAsset(url: url!,
-                             vertexDescriptor: meshDescriptor,
-                             bufferAllocator: allocator)
-        return asset
+        return MDLAsset(url: url!,
+                        vertexDescriptor: meshDescriptor,
+                        bufferAllocator: allocator)
     }
     
     private class func buildRenderPipelineState(device: MTLDevice,
-                                        mtkView: MTKView,
-                                        bundle: Bundle?) throws -> MTLRenderPipelineState {
+                                                mtkView: MTKView,
+                                                bundle: Bundle?) throws -> MTLRenderPipelineState {
         let library = bundle != nil
             ? try device.makeDefaultLibrary(bundle: bundle!)
             : device.makeDefaultLibrary()
