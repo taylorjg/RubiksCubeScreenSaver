@@ -53,14 +53,14 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
     private var projectionMatrix: matrix_float4x4
     private let mtkMesh: MTKMesh
     private let colorMapIndicesBuffer: MTLBuffer
-    private var cube: [LogicalPiece]
-    private var scrambleMoves: [Move]
-    private var unscrambleMoves: [Move]
-    private var visualPieces: [VisualPiece]
+    private var cube: [LogicalPiece] = []
+    private var scrambleMoves: [Move] = []
+    private var unscrambleMoves: [Move] = []
+    private var visualPieces: [VisualPiece] = []
     private var animation: Animation?
     private let quat0: simd_quatf
     private let quat1: simd_quatf
-    private var iter = 0
+    private var iteration = 0
     
     init?(mtkView: MTKView, bundle: Bundle? = nil) {
         self.device = mtkView.device!
@@ -93,18 +93,12 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
         mtkMesh = Renderer.loadCubeModel(device: device, bundle: bundle)
         colorMapIndicesBuffer = Renderer.buildColorMapIndicesBuffer(device: device, mtkMesh: mtkMesh)
         
-        (scrambleMoves, unscrambleMoves) = getRandomMoves(cubeSize: cubeSize, numMoves: 25)
-        let solvedCube = makeSolvedCube(cubeSize: cubeSize)
-        cube = makeMoves(moves: scrambleMoves, initialCube: solvedCube)
-        visualPieces = Renderer.createVisualPieces(device: device, cubeSize: cubeSize, solvedCube: solvedCube)
-        
         quat0 = simd_quatf(matrix_identity_float4x4)
         quat1 = simd_quatf(angle: Float.pi / 4, axis: simd_float3(0, 1, 0))
         
         super.init()
         
-        updateVisualPieces()
-        startAnimation()
+        scramble(cubeSize: cubeSize)
     }
     
     private class func loadCubeModel(device: MTLDevice, bundle: Bundle?) -> MTKMesh {
@@ -227,7 +221,12 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
     }
     
     private func startAnimation() {
-        guard let move = unscrambleMoves.last else { return }
+        guard let move = unscrambleMoves.last else {
+            DispatchQueue.main.asyncAfter(deadline: .now() + Double(10)) {
+                self.scramble(cubeSize: 3)
+            }
+            return
+        }
         let logicalPieces = getPieces(cube: cube, coordsList: move.coordsList)
         let ids = logicalPieces.map { logicalPiece in logicalPiece.id }
         let totalFrames = 45 * move.numTurns
@@ -240,12 +239,23 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
     }
     
     private func completeAnimation() {
-        guard let move = unscrambleMoves.popLast() else { return }
+        guard let move = unscrambleMoves.popLast() else {
+            return
+        }
         cube = move.makeMove(cube)
         updateVisualPieces()
         DispatchQueue.main.asyncAfter(deadline: .now() + Double(0.5)) {
             self.startAnimation()
         }
+    }
+    
+    private func scramble(cubeSize: Int) {
+        let solvedCube = makeSolvedCube(cubeSize: cubeSize)
+        visualPieces = Renderer.createVisualPieces(device: device, cubeSize: cubeSize, solvedCube: solvedCube)
+        (scrambleMoves, unscrambleMoves) = getRandomMoves(cubeSize: cubeSize, numMoves: 25)
+        cube = makeMoves(moves: scrambleMoves, initialCube: solvedCube)
+        updateVisualPieces()
+        startAnimation()
     }
     
     private class func buildRenderPipelineState(device: MTLDevice,
@@ -295,7 +305,7 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
         renderEncoder.setVertexBuffer(colorMapIndicesBuffer, offset: 0, index: 3)
         let submesh = mtkMesh.submeshes[0]
         for visualPiece in visualPieces {
-            let cubeRotation = matrix_float4x4(simd_slerp(quat0, quat1, Float(iter) / 60 / 4))
+            let cubeRotation = matrix_float4x4(simd_slerp(quat0, quat1, Float(iteration) / 60 / 4))
             let animationRotation = calcAnimationRotation(visualPiece: visualPiece)
             let pieceRotation = visualPiece.rotation
             uniforms.modelMatrix = cubeRotation * animationRotation * pieceRotation * visualPiece.modelMatrix
@@ -322,7 +332,7 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
             view.currentDrawable.map(commandBuffer.present)
             commandBuffer.commit()
             commandBuffer.waitUntilCompleted()
-            iter += 1
+            iteration += 1
         }
     }
     
