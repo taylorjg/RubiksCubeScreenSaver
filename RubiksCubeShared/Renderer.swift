@@ -191,41 +191,41 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
         
         super.init()
         
-        makeNextUnscrambleMove()
-        
-        let move = unscrambleMoves.last!
-        let ids = getPieces(cube: cube, coordsList: move.coordsList)
-            .map { logicalPiece in logicalPiece.id }
+        startAnimation()
+    }
+    
+    private func startAnimation() {
+        guard let move = unscrambleMoves.last else { return }
+        let logicalPieces = getPieces(cube: cube, coordsList: move.coordsList)
+        let ids = logicalPieces.map { logicalPiece in logicalPiece.id }
         let totalFrames = 45 * move.numTurns
         animation = Animation(ids: ids,
                               quat0: simd_quatf(matrix_identity_float4x4),
                               quat1: simd_quatf(move.rotation),
                               totalFrames: totalFrames,
                               remainingFrames: totalFrames,
-                              onCompletion: { print("Animation complete!") })
+                              onCompletion: completeAnimation)
     }
     
-    private func makeNextUnscrambleMove() {
-        DispatchQueue.main.asyncAfter(deadline: .now() + Double(1)) {
-            guard let move = self.unscrambleMoves.popLast() else {
-                return
+    private func completeAnimation() {
+        guard let move = self.unscrambleMoves.popLast() else { return }
+        self.cube = move.makeMove(self.cube)
+        let logicalPieces = getPieces(cube: self.cube, coordsList: move.coordsList)
+        func findLogicalPiece(id: Int) -> LogicalPiece? {
+            logicalPieces.first(where: { logicalPiece in logicalPiece.id == id })
+        }
+        self.visualPieces = self.visualPieces.map { visualPiece in
+            guard let logicalPiece = findLogicalPiece(id: visualPiece.id) else {
+                return visualPiece
             }
-            self.cube = move.makeMove(self.cube)
-            let logicalPieces = getPieces(cube: self.cube, coordsList: move.coordsList)
-            func findLogicalPiece(id: Int) -> LogicalPiece? {
-                logicalPieces.first(where: { logicalPiece in logicalPiece.id == id })
-            }
-            self.visualPieces = self.visualPieces.map { visualPiece in
-                guard let logicalPiece = findLogicalPiece(id: visualPiece.id) else {
-                    return visualPiece
-                }
-                return VisualPiece(id: visualPiece.id,
-                                   modelMatrix: visualPiece.modelMatrix,
-                                   rotation: logicalPiece.accumulatedRotations,
-                                   colorMap: visualPiece.colorMap,
-                                   colorMapBuffer: visualPiece.colorMapBuffer)
-            }
-            self.makeNextUnscrambleMove()
+            return VisualPiece(id: visualPiece.id,
+                               modelMatrix: visualPiece.modelMatrix,
+                               rotation: logicalPiece.accumulatedRotations,
+                               colorMap: visualPiece.colorMap,
+                               colorMapBuffer: visualPiece.colorMapBuffer)
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + Double(0.5)) {
+            self.startAnimation()
         }
     }
     
@@ -273,7 +273,8 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
             animation.remainingFrames > 0,
             animation.ids.contains(visualPiece.id)
             else { return matrix_identity_float4x4 }
-        let t = Float(animation.remainingFrames) / Float(animation.totalFrames)
+        let completedFrames = animation.totalFrames - animation.remainingFrames
+        let t = Float(completedFrames) / Float(animation.totalFrames)
         return matrix_float4x4(simd_slerp(animation.quat0, animation.quat1, t))
     }
     
