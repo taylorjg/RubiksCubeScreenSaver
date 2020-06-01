@@ -32,14 +32,16 @@
             <objects>
                 <viewController id="nCc-gT-sFv" customClass="ConfigSheetViewController" customModule="RubiksCube" sceneMemberID="viewController">
                     <view key="view" id="RWM-V5-Bcl">
-                        <rect key="frame" x="0.0" y="0.0" width="411" height="277"/>
+                        <rect key="frame" x="0.0" y="0.0" width="411" height="230"/>
                         <autoresizingMask key="autoresizingMask"/>
+                        <userGuides>
+                            <userLayoutGuide location="196" affinity="minX"/>
+                            <userLayoutGuide location="212" affinity="minX"/>
+                        </userGuides>
                         <subviews>
-                            <button verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="eO8-Nv-7O3">
+                            <button verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="eO8-Nv-7O3">
                                 <rect key="frame" x="315" y="13" width="82" height="32"/>
-                                <constraints>
-                                    <constraint firstAttribute="width" constant="70" id="nu7-g4-cRV"/>
-                                </constraints>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                                 <buttonCell key="cell" type="push" title="OK" bezelStyle="rounded" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="Rkv-0b-9IP">
                                     <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
                                     <font key="font" metaFont="system"/>
@@ -51,8 +53,9 @@ DQ
                                     <action selector="okButtonTapped:" target="nCc-gT-sFv" id="evW-5M-xyi"/>
                                 </connections>
                             </button>
-                            <button verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="uCY-P1-X14">
+                            <button verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="uCY-P1-X14">
                                 <rect key="frame" x="233" y="13" width="82" height="32"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                                 <buttonCell key="cell" type="push" title="Cancel" bezelStyle="rounded" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="LZU-gh-aZ7">
                                     <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
                                     <font key="font" metaFont="system"/>
@@ -65,29 +68,105 @@ Gw
                                 </connections>
                             </button>
                             <button verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="TvR-qe-FIg">
-                                <rect key="frame" x="176" y="73" width="210" height="18"/>
+                                <rect key="frame" x="210" y="62" width="104" height="18"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
-                                <buttonCell key="cell" type="check" title="Enable MSAA (sample count 4)" bezelStyle="regularSquare" imagePosition="left" state="on" inset="2" id="Bgr-Zj-XmJ">
+                                <buttonCell key="cell" type="check" title="Enable MSAA" bezelStyle="regularSquare" imagePosition="left" state="on" inset="2" id="Bgr-Zj-XmJ">
                                     <behavior key="behavior" changeContents="YES" doesNotDimImage="YES" lightByContents="YES"/>
                                     <font key="font" metaFont="system"/>
                                 </buttonCell>
                             </button>
+                            <button verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="f6j-9t-sOY">
+                                <rect key="frame" x="210" y="194" width="61" height="18"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                                <buttonCell key="cell" type="check" title="2" bezelStyle="regularSquare" imagePosition="left" state="on" inset="2" id="OpO-2F-Usx">
+                                    <behavior key="behavior" changeContents="YES" doesNotDimImage="YES" lightByContents="YES"/>
+                                    <font key="font" metaFont="system"/>
+                                </buttonCell>
+                                <connections>
+                                    <action selector="cubeSizeCheckChanged:" target="nCc-gT-sFv" id="O8C-yW-5qo"/>
+                                </connections>
+                            </button>
+                            <button verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="YfZ-8I-Exb">
+                                <rect key="frame" x="210" y="168" width="61" height="18"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                                <buttonCell key="cell" type="check" title="3" bezelStyle="regularSquare" imagePosition="left" state="on" inset="2" id="7Kj-XI-0pM">
+                                    <behavior key="behavior" changeContents="YES" doesNotDimImage="YES" lightByContents="YES"/>
+                                    <font key="font" metaFont="system"/>
+                                </buttonCell>
+                                <connections>
+                                    <action selector="cubeSizeCheckChanged:" target="nCc-gT-sFv" id="lCd-rL-16g"/>
+                                </connections>
+                            </button>
+                            <button verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="obZ-al-7qo">
+                                <rect key="frame" x="210" y="142" width="61" height="18"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                                <buttonCell key="cell" type="check" title="4" bezelStyle="regularSquare" imagePosition="left" state="on" inset="2" id="DAD-5T-TJ5">
+                                    <behavior key="behavior" changeContents="YES" doesNotDimImage="YES" lightByContents="YES"/>
+                                    <font key="font" metaFont="system"/>
+                                </buttonCell>
+                                <connections>
+                                    <action selector="cubeSizeCheckChanged:" target="nCc-gT-sFv" id="jRf-gx-bCQ"/>
+                                </connections>
+                            </button>
+                            <button verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="v7a-OZ-Lco">
+                                <rect key="frame" x="210" y="116" width="61" height="18"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                                <buttonCell key="cell" type="check" title="5" bezelStyle="regularSquare" imagePosition="left" state="on" inset="2" id="E57-S6-TFf">
+                                    <behavior key="behavior" changeContents="YES" doesNotDimImage="YES" lightByContents="YES"/>
+                                    <font key="font" metaFont="system"/>
+                                </buttonCell>
+                                <connections>
+                                    <action selector="cubeSizeCheckChanged:" target="nCc-gT-sFv" id="Fx3-Z8-CLH"/>
+                                </connections>
+                            </button>
+                            <popUpButton verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="n1w-4a-jnV">
+                                <rect key="frame" x="210" y="85" width="125" height="25"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                                <popUpButtonCell key="cell" type="push" title="2 seconds" bezelStyle="rounded" alignment="left" lineBreakMode="truncatingTail" state="on" borderStyle="borderAndBezel" tag="2" imageScaling="proportionallyDown" inset="2" selectedItem="Gdg-qg-Sin" id="s8l-PE-wea">
+                                    <behavior key="behavior" lightByBackground="YES" lightByGray="YES"/>
+                                    <font key="font" metaFont="menu"/>
+                                    <menu key="menu" id="Jh9-SO-6m1">
+                                        <items>
+                                            <menuItem title="2 seconds" state="on" tag="2" id="Gdg-qg-Sin"/>
+                                            <menuItem title="5 seconds" tag="5" id="Ozm-ga-tft"/>
+                                            <menuItem title="10 seconds" tag="10" id="UMl-EZ-Ph1"/>
+                                        </items>
+                                    </menu>
+                                </popUpButtonCell>
+                            </popUpButton>
+                            <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="hKY-px-crn">
+                                <rect key="frame" x="73" y="195" width="125" height="16"/>
+                                <autoresizingMask key="autoresizingMask"/>
+                                <textFieldCell key="cell" lineBreakMode="clipping" title="Enabled cube sizes:" id="UfB-UN-hUi">
+                                    <font key="font" metaFont="system"/>
+                                    <color key="textColor" name="labelColor" catalog="System" colorSpace="catalog"/>
+                                    <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
+                                </textFieldCell>
+                            </textField>
+                            <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="lvj-lv-FzG">
+                                <rect key="frame" x="22" y="91" width="176" height="16"/>
+                                <autoresizingMask key="autoresizingMask"/>
+                                <textFieldCell key="cell" lineBreakMode="clipping" title="Pause before re-scrambling:" id="j8o-FK-DRu">
+                                    <font key="font" metaFont="system"/>
+                                    <color key="textColor" name="labelColor" catalog="System" colorSpace="catalog"/>
+                                    <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
+                                </textFieldCell>
+                            </textField>
                         </subviews>
-                        <constraints>
-                            <constraint firstItem="eO8-Nv-7O3" firstAttribute="leading" secondItem="uCY-P1-X14" secondAttribute="trailing" constant="12" symbolic="YES" id="ES5-wg-fWb"/>
-                            <constraint firstItem="uCY-P1-X14" firstAttribute="baseline" secondItem="eO8-Nv-7O3" secondAttribute="baseline" id="WvM-rf-qew"/>
-                            <constraint firstAttribute="trailing" secondItem="eO8-Nv-7O3" secondAttribute="trailing" constant="20" symbolic="YES" id="fUL-Lp-xc9"/>
-                            <constraint firstAttribute="bottom" secondItem="uCY-P1-X14" secondAttribute="bottom" constant="20" symbolic="YES" id="yYD-BA-rRc"/>
-                        </constraints>
                     </view>
                     <connections>
+                        <outlet property="cubeSize2Check" destination="f6j-9t-sOY" id="nhS-FS-EX9"/>
+                        <outlet property="cubeSize3Check" destination="YfZ-8I-Exb" id="Llg-3O-l3h"/>
+                        <outlet property="cubeSize4Check" destination="obZ-al-7qo" id="d1h-jp-dkk"/>
+                        <outlet property="cubeSize5Check" destination="v7a-OZ-Lco" id="WU7-Mw-saw"/>
                         <outlet property="enableMSAACheck" destination="TvR-qe-FIg" id="vNN-hQ-SFG"/>
                         <outlet property="okButton" destination="eO8-Nv-7O3" id="N87-io-pJq"/>
+                        <outlet property="pauseIntervalPopUp" destination="n1w-4a-jnV" id="ZfF-eF-pKi"/>
                     </connections>
                 </viewController>
                 <customObject id="IIM-xs-qZ3" userLabel="First Responder" customClass="NSResponder" sceneMemberID="firstResponder"/>
             </objects>
-            <point key="canvasLocation" x="103.5" y="432.5"/>
+            <point key="canvasLocation" x="103.5" y="409"/>
         </scene>
     </scenes>
 </document>

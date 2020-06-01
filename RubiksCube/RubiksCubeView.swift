@@ -31,8 +31,12 @@ class RubiksCubeView: ScreenSaverView {
         self.addSubview(mtkView)
 
         let bundle = Bundle(for: RubiksCubeView.self)
-
-        guard let newRenderer = Renderer(mtkView: mtkView, bundle: bundle) else {
+        
+        let settings = Settings(cubeSizes: defaultsManager.cubeSizes,
+                                pauseInterval: defaultsManager.pauseInterval,
+                                enableMSAA: defaultsManager.enableMSAA)
+        
+        guard let newRenderer = Renderer(mtkView: mtkView, bundle: bundle, settings: settings) else {
             print("Renderer cannot be initialized")
             return
         }
@@ -48,7 +52,7 @@ class RubiksCubeView: ScreenSaverView {
     }
     
     override var hasConfigureSheet: Bool {
-        return false
+        return true
     }
     
     override var configureSheet: NSWindow? {

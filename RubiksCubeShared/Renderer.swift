@@ -10,6 +10,24 @@ import Metal
 import MetalKit
 import simd
 
+struct Settings {
+    static let defaultCubeSizes = [2, 3]
+    static let defaultPauseInterval = 10
+    static let defaultEnableMSAA = false
+    
+    let cubeSizes: [Int]
+    let pauseInterval: Int
+    let enableMSAA: Bool
+}
+
+extension Settings {
+    init() {
+        cubeSizes = Settings.defaultCubeSizes
+        pauseInterval = Settings.defaultPauseInterval
+        enableMSAA = Settings.defaultEnableMSAA
+    }
+}
+
 private let RED = simd_float4(1, 0, 0, 1)
 private let GREEN = simd_float4(0, 0.5, 0, 1)
 private let BLUE = simd_float4(0, 0, 1, 1)
@@ -45,6 +63,7 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
         }
     }
     
+    private let settings: Settings
     private let device: MTLDevice
     private let commandQueue: MTLCommandQueue
     private let flatPipelineState: MTLRenderPipelineState
@@ -62,10 +81,13 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
     private let quat1: simd_quatf
     private var iteration = 0
     
-    init?(mtkView: MTKView, bundle: Bundle? = nil) {
+    init?(mtkView: MTKView, bundle: Bundle? = nil, settings: Settings) {
+        self.settings = settings
         self.device = mtkView.device!
         mtkView.depthStencilPixelFormat = MTLPixelFormat.depth32Float
-        // mtkView.sampleCount = 4
+        if settings.enableMSAA {
+            mtkView.sampleCount = 4
+        }
         guard let queue = self.device.makeCommandQueue() else { return nil }
         self.commandQueue = queue
         
@@ -98,7 +120,14 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
     }
     
     private func setViewMatrix(cubeSize: Int) {
-        viewMatrix = matrix_lookat(eye: simd_float3(2, 0.8 * Float(cubeSize), 2.0 * Float(cubeSize)),
+        let zs = [
+            2: 2.0 * 2,
+            3: 2.0 * 3,
+            4: 2.2 * 4,
+            5: 2.4 * 5
+        ]
+        let z = zs[cubeSize]!
+        viewMatrix = matrix_lookat(eye: simd_float3(2, 0.8 * Float(cubeSize), Float(z)),
                                    point: simd_float3(),
                                    up: simd_float3(0, 1, 0))
     }
@@ -224,7 +253,7 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
     
     private func startAnimation() {
         guard let move = unscrambleMoves.last else {
-            DispatchQueue.main.asyncAfter(deadline: .now() + Double(10)) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + Double(settings.pauseInterval)) {
                 self.scramble()
             }
             return
@@ -258,7 +287,7 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
             4: 15...25,
             5: 15...30
         ]
-        let cubeSize = Int.random(in: 2...5)
+        let cubeSize = settings.cubeSizes.randomElement()!
         let numMoves = Int.random(in: ranges[cubeSize] ?? 10...20)
         setViewMatrix(cubeSize: cubeSize)
         let solvedCube = makeSolvedCube(cubeSize: cubeSize)
