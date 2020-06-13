@@ -70,6 +70,7 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
     private let depthState: MTLDepthStencilState
     private var viewMatrix: matrix_float4x4
     private var projectionMatrix: matrix_float4x4
+    private var worldCameraPosition: simd_float3
     private let mtkMesh: MTKMesh
     private let colorMapIndicesBuffer: MTLBuffer
     private var cube: [LogicalPiece] = []
@@ -107,6 +108,7 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
         
         viewMatrix = matrix_identity_float4x4
         projectionMatrix = matrix_identity_float4x4
+        worldCameraPosition = simd_float3()
         
         mtkMesh = Renderer.loadCubeModel(device: device, bundle: bundle)
         colorMapIndicesBuffer = Renderer.buildColorMapIndicesBuffer(device: device, mtkMesh: mtkMesh)
@@ -127,7 +129,8 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
             5: 2.4 * 5
         ]
         let z = zs[cubeSize]!
-        viewMatrix = matrix_lookat(eye: simd_float3(2, 0.8 * Float(cubeSize), Float(z)),
+        worldCameraPosition = simd_float3(2, 0.8 * Float(cubeSize), Float(z))
+        viewMatrix = matrix_lookat(eye: worldCameraPosition,
                                    point: simd_float3(),
                                    up: simd_float3(0, 1, 0))
     }
@@ -138,9 +141,13 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
         vertexDescriptor.attributes[0].format = .float3
         vertexDescriptor.attributes[0].offset = 0
         vertexDescriptor.attributes[0].bufferIndex = 0
+        vertexDescriptor.attributes[1].format = .float3
+        vertexDescriptor.attributes[1].offset = MemoryLayout<simd_float3>.stride
+        vertexDescriptor.attributes[1].bufferIndex = 0
         vertexDescriptor.layouts[0].stride = MemoryLayout<FlatVertex>.stride
         let meshDescriptor = MTKModelIOVertexDescriptorFromMetal(vertexDescriptor)
         (meshDescriptor.attributes[0] as! MDLVertexAttribute).name = MDLVertexAttributePosition
+        (meshDescriptor.attributes[1] as! MDLVertexAttribute).name = MDLVertexAttributeNormal
         let allocator = MTKMeshBufferAllocator(device: device)
         let mdlAsset = MDLAsset(url: url!,
                                 vertexDescriptor: meshDescriptor,
@@ -336,6 +343,7 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
         var uniforms = FlatUniforms()
         uniforms.viewMatrix = viewMatrix
         uniforms.projectionMatrix = projectionMatrix
+        uniforms.worldCameraPosition = worldCameraPosition
         let uniformsLength = MemoryLayout<FlatUniforms>.stride
         renderEncoder.pushDebugGroup("Draw Piece")
         renderEncoder.setRenderPipelineState(flatPipelineState)
@@ -343,6 +351,7 @@ class Renderer: NSObject, MTKViewDelegate, KeyboardControlDelegate {
         renderEncoder.setCullMode(.front)
         renderEncoder.setVertexBuffer(mtkMesh.vertexBuffers[0].buffer, offset: 0, index: 1)
         renderEncoder.setVertexBuffer(colorMapIndicesBuffer, offset: 0, index: 3)
+        renderEncoder.setFragmentBytes(&uniforms, length: uniformsLength, index: 0)
         let submesh = mtkMesh.submeshes[0]
         for visualPiece in visualPieces {
             let cubeRotation = matrix_float4x4(simd_slerp(quat0, quat1, Float(iteration) / 60 / 4))
